@@ -4,7 +4,7 @@ import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.LevelRenderer;
-import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.client.renderer.Lightmap;
 import org.joml.Matrix4f;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -17,7 +17,7 @@ public class MixinLevelRenderer_BeforeIris {
     // inject it after Iris, run before Iris
     @Inject(method = "renderLevel", at = @At(value = "CONSTANT", args = "stringValue=translucent"))
     private void iris$beginTranslucents(
-        DeltaTracker deltaTracker, boolean bl, Camera camera, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f modelView, Matrix4f matrix4f2, CallbackInfo ci
+        DeltaTracker deltaTracker, boolean bl, Camera camera, GameRenderer gameRenderer, Lightmap lightTexture, Matrix4f modelView, Matrix4f matrix4f2, CallbackInfo ci
     ) {
         IPCGlobal.renderer.onBeginIrisTranslucentRendering(modelView);
     }

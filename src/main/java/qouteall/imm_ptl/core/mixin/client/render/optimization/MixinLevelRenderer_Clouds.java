@@ -1,7 +1,7 @@
 package qouteall.imm_ptl.core.mixin.client.render.optimization;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexBuffer;
+import com.mojang.blaze3d.buffers.GpuBuffer;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.util.Mth;
@@ -35,7 +35,7 @@ public abstract class MixinLevelRenderer_Clouds {
     
     @Shadow
     @Nullable
-    private VertexBuffer cloudBuffer;
+    private GpuBuffer cloudBuffer;
     
     @Shadow
     private ClientLevel level;

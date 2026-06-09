@@ -1,11 +1,13 @@
 package qouteall.imm_ptl.core.mixin.client.render;
 
+import net.minecraft.util.profiling.Profiler;
+
 import com.llamalad7.mixinextras.sugar.Local;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.platform.Lighting;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexBuffer;
+import com.mojang.blaze3d.buffers.GpuBuffer;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
@@ -14,7 +16,7 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.LevelRenderer;
-import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.client.renderer.Lightmap;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.PostChain;
 import net.minecraft.client.renderer.RenderBuffers;
@@ -108,19 +110,19 @@ public abstract class MixinLevelRenderer implements IEWorldRenderer {
     
     @Shadow
     @Nullable
-    private VertexBuffer starBuffer;
+    private GpuBuffer starBuffer;
     
     @Shadow
     @Nullable
-    private VertexBuffer skyBuffer;
+    private GpuBuffer skyBuffer;
     
     @Shadow
     @Nullable
-    private VertexBuffer darkBuffer;
+    private GpuBuffer darkBuffer;
     
     @Shadow
     @Nullable
-    private VertexBuffer cloudBuffer;
+    private GpuBuffer cloudBuffer;
     
     @Shadow
     protected abstract void deinitTransparency();
@@ -141,7 +143,7 @@ public abstract class MixinLevelRenderer implements IEWorldRenderer {
         )
     )
     private void onAfterCutoutRendering(
-        DeltaTracker deltaTracker, boolean bl, Camera camera, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f modelView, Matrix4f matrix4f2, CallbackInfo ci
+        DeltaTracker deltaTracker, boolean bl, Camera camera, GameRenderer gameRenderer, Lightmap lightTexture, Matrix4f modelView, Matrix4f matrix4f2, CallbackInfo ci
     ) {
 //        IPCGlobal.renderer.onBeforeTranslucentRendering(matrices);
         
@@ -156,7 +158,7 @@ public abstract class MixinLevelRenderer implements IEWorldRenderer {
         )
     )
     private void onMyBeforeTranslucentRendering(
-        DeltaTracker deltaTracker, boolean bl, Camera camera, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f modelView, Matrix4f matrix4f2, CallbackInfo ci
+        DeltaTracker deltaTracker, boolean bl, Camera camera, GameRenderer gameRenderer, Lightmap lightTexture, Matrix4f modelView, Matrix4f matrix4f2, CallbackInfo ci
     ) {
         IPCGlobal.renderer.onBeforeTranslucentRendering(modelView);
         
@@ -179,7 +181,7 @@ public abstract class MixinLevelRenderer implements IEWorldRenderer {
         )
     )
     private void onEndRenderingEntities(
-        DeltaTracker deltaTracker, boolean bl, Camera camera, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f matrix4f, Matrix4f matrix4f2, CallbackInfo ci, @Local PoseStack poseStack
+        DeltaTracker deltaTracker, boolean bl, Camera camera, GameRenderer gameRenderer, Lightmap lightTexture, Matrix4f matrix4f, Matrix4f matrix4f2, CallbackInfo ci, @Local PoseStack poseStack
     ) {
         CrossPortalEntityRenderer.onEndRenderingEntitiesAndBlockEntities(poseStack);
     }
@@ -189,7 +191,7 @@ public abstract class MixinLevelRenderer implements IEWorldRenderer {
         at = @At("RETURN")
     )
     private void onAfterTranslucentRendering(
-        DeltaTracker deltaTracker, boolean bl, Camera camera, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f modelView, Matrix4f matrix4f2, CallbackInfo ci
+        DeltaTracker deltaTracker, boolean bl, Camera camera, GameRenderer gameRenderer, Lightmap lightTexture, Matrix4f modelView, Matrix4f matrix4f2, CallbackInfo ci
     ) {
         IPCGlobal.renderer.onAfterTranslucentRendering(modelView);
         
@@ -205,7 +207,7 @@ public abstract class MixinLevelRenderer implements IEWorldRenderer {
         )
     )
     private void onBeforeRenderingLayer(
-        DeltaTracker deltaTracker, boolean bl, Camera camera, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f modelView, Matrix4f matrix4f2, CallbackInfo ci
+        DeltaTracker deltaTracker, boolean bl, Camera camera, GameRenderer gameRenderer, Lightmap lightTexture, Matrix4f modelView, Matrix4f matrix4f2, CallbackInfo ci
     ) {
         if (PortalRendering.isRendering()) {
             FrontClipping.setupInnerClipping(
@@ -234,7 +236,7 @@ public abstract class MixinLevelRenderer implements IEWorldRenderer {
         )
     )
     private void onAfterRenderingLayer(
-        DeltaTracker deltaTracker, boolean bl, Camera camera, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f matrix4f, Matrix4f matrix4f2, CallbackInfo ci
+        DeltaTracker deltaTracker, boolean bl, Camera camera, GameRenderer gameRenderer, Lightmap lightTexture, Matrix4f matrix4f, Matrix4f matrix4f2, CallbackInfo ci
     ) {
         if (PortalRendering.isRendering()) {
             FrontClipping.disableClipping();
@@ -257,20 +259,20 @@ public abstract class MixinLevelRenderer implements IEWorldRenderer {
     ) {
         if (WorldRenderInfo.isRendering()) {
             if (level.dimension() != RenderStates.originalPlayerDimension) {
-                sectionRenderDispatcher.setCamera(camera.getPosition());
+                sectionRenderDispatcher.setCamera(camera.position());
             }
         }
         
         if (ip_allowOverrideTerrainSetup()) {
             if (WorldRenderInfo.isRendering()) {
-                level.getProfiler().push("ip_terrain_setup");
+                Profiler.get().push("ip_terrain_setup");
                 VisibleSectionDiscovery.discoverVisibleSections(
                     level, ((ImmPtlViewArea) viewArea),
                     camera,
                     new Frustum(frustum).offsetToFullyIncludeCameraCube(8),
                     visibleSections
                 );
-                level.getProfiler().pop();
+                Profiler.get().pop();
                 
                 ci.cancel();
             }
@@ -296,25 +298,25 @@ public abstract class MixinLevelRenderer implements IEWorldRenderer {
                 if (MyGameRenderer.vanillaTerrainSetupOverride > 0) {
                     MyGameRenderer.vanillaTerrainSetupOverride--;
                     
-                    level.getProfiler().push("ip_terrain_setup");
+                    Profiler.get().push("ip_terrain_setup");
                     VisibleSectionDiscovery.discoverVisibleSections(
                         level, ((ImmPtlViewArea) viewArea),
                         camera,
                         new Frustum(frustum).offsetToFullyIncludeCameraCube(8),
                         visibleSections
                     );
-                    level.getProfiler().pop();
+                    Profiler.get().pop();
                 }
                 else if (IPGlobal.alwaysOverrideTerrainSetup) {
                     // debug
-                    level.getProfiler().push("ip_terrain_setup_debug");
+                    Profiler.get().push("ip_terrain_setup_debug");
                     VisibleSectionDiscovery.discoverVisibleSections(
                         level, ((ImmPtlViewArea) viewArea),
                         camera,
                         new Frustum(frustum).offsetToFullyIncludeCameraCube(8),
                         visibleSections
                     );
-                    level.getProfiler().pop();
+                    Profiler.get().pop();
                 }
             }
         }
@@ -396,7 +398,7 @@ public abstract class MixinLevelRenderer implements IEWorldRenderer {
         )
     )
     private void beforeRenderingWeather(
-        DeltaTracker deltaTracker, boolean bl, Camera camera, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f modelView, Matrix4f matrix4f2, CallbackInfo ci
+        DeltaTracker deltaTracker, boolean bl, Camera camera, GameRenderer gameRenderer, Lightmap lightTexture, Matrix4f modelView, Matrix4f matrix4f2, CallbackInfo ci
     ) {
         if (PortalRendering.isRendering()) {
             FrontClipping.setupInnerClipping(
@@ -416,7 +418,7 @@ public abstract class MixinLevelRenderer implements IEWorldRenderer {
         )
     )
     private void afterRenderingWeather(
-        DeltaTracker deltaTracker, boolean bl, Camera camera, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f matrix4f, Matrix4f matrix4f2, CallbackInfo ci
+        DeltaTracker deltaTracker, boolean bl, Camera camera, GameRenderer gameRenderer, Lightmap lightTexture, Matrix4f matrix4f, Matrix4f matrix4f2, CallbackInfo ci
     ) {
         if (PortalRendering.isRendering()) {
             FrontClipping.disableClipping();

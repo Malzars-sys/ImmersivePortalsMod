@@ -1,8 +1,9 @@
 package qouteall.imm_ptl.core.portal;
 
+import net.minecraft.util.profiling.Profiler;
+
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.fabricmc.fabric.api.object.builder.v1.block.FabricBlockSettings;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.BlockGetter;
@@ -11,6 +12,7 @@ import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -51,8 +53,8 @@ public class PortalPlaceholderBlock extends Block {
     );
     
     public static final PortalPlaceholderBlock instance = new PortalPlaceholderBlock(
-        FabricBlockSettings.create()
-            .noCollission()
+        BlockBehaviour.Properties.of()
+            .noCollision()
             .sound(SoundType.GLASS)
             .strength(1.0f, 0)
             .noOcclusion()
@@ -102,7 +104,7 @@ public class PortalPlaceholderBlock extends Block {
             if (worldAccess instanceof Level) {
                 Level world = (Level) worldAccess;
                 
-                world.getProfiler().push("portal_placeholder");
+                Profiler.get().push("portal_placeholder");
                 
                 Direction.Axis axis = thisState.getValue(AXIS);
                 if (direction.getAxis() != axis) {
@@ -119,7 +121,7 @@ public class PortalPlaceholderBlock extends Block {
                     );
                 }
                 
-                world.getProfiler().pop();
+                Profiler.get().pop();
             }
         }
         

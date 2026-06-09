@@ -1,7 +1,7 @@
 package qouteall.imm_ptl.core.render.context_management;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.client.renderer.Lightmap;
 import net.minecraft.world.level.Level;
 import qouteall.imm_ptl.core.ducks.IEGameRenderer;
 import qouteall.q_misc_util.Helper;
@@ -10,30 +10,26 @@ public class DimensionRenderHelper {
     private static final Minecraft client = Minecraft.getInstance();
     public final Level world;
     
-    public final LightTexture lightmapTexture;
+    public final Lightmap lightmapTexture;
     
     public DimensionRenderHelper(Level world) {
         this.world = world;
         
         if (client.level == world) {
-            IEGameRenderer gameRenderer = (IEGameRenderer) client.gameRenderer;
-            
-            lightmapTexture = client.gameRenderer.lightTexture();
+            lightmapTexture = ((IEGameRenderer) client.gameRenderer).ip_getLightmap();
         }
         else {
-            lightmapTexture = new LightTexture(client.gameRenderer, client);
-            Helper.log("Created lightmap texture for " + world.dimension().location());
+            lightmapTexture = new Lightmap();
+            Helper.log("Created lightmap texture for " + world.dimension().identifier());
         }
     }
     
     public void tick() {
-        if (lightmapTexture != client.gameRenderer.lightTexture()) {
-            lightmapTexture.tick();
-        }
+        // Lightmap state is extracted and rendered by GameRenderer in 26.1.
     }
     
     public void cleanUp() {
-        if (lightmapTexture != client.gameRenderer.lightTexture()) {
+        if (lightmapTexture != ((IEGameRenderer) client.gameRenderer).ip_getLightmap()) {
             lightmapTexture.close();
         }
     }

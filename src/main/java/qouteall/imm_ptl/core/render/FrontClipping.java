@@ -1,6 +1,6 @@
 package qouteall.imm_ptl.core.render;
 
-import com.mojang.blaze3d.shaders.Uniform;
+import com.mojang.blaze3d.opengl.Uniform;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
@@ -149,7 +149,7 @@ public class FrontClipping {
         
         Vec3 planeNormal = outerClipping.normal();
         
-        Vec3 cameraPos = client.gameRenderer.getMainCamera().getPosition();
+        Vec3 cameraPos = client.gameRenderer.getMainCamera().position();
         
         Vec3 portalPos = outerClipping.pos()
             .subtract(cameraPos);

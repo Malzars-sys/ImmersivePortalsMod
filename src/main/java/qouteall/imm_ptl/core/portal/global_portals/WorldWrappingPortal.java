@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 
 public class WorldWrappingPortal extends GlobalTrackedPortal {
     public static final EntityType<WorldWrappingPortal> ENTITY_TYPE =
-        createPortalEntityType(WorldWrappingPortal::new);
+        createPortalEntityType("border_portal", WorldWrappingPortal::new);
     
     public boolean isInward = true;
     public int zoneId = -1;
@@ -33,20 +33,20 @@ public class WorldWrappingPortal extends GlobalTrackedPortal {
     }
     
     @Override
-    protected void readAdditionalSaveData(CompoundTag compoundTag) {
-        super.readAdditionalSaveData(compoundTag);
+    protected void readPortalData(CompoundTag compoundTag) {
+        super.readPortalData(compoundTag);
         
         if (compoundTag.contains("isInward")) {
-            isInward = compoundTag.getBoolean("isInward");
+            isInward = compoundTag.getBooleanOr("isInward", true);
         }
         if (compoundTag.contains("zoneId")) {
-            zoneId = compoundTag.getInt("zoneId");
+            zoneId = compoundTag.getIntOr("zoneId", -1);
         }
     }
     
     @Override
-    protected void addAdditionalSaveData(CompoundTag compoundTag) {
-        super.addAdditionalSaveData(compoundTag);
+    protected void writePortalData(CompoundTag compoundTag) {
+        super.writePortalData(compoundTag);
         
         compoundTag.putBoolean("isInward", isInward);
         compoundTag.putInt("zoneId", zoneId);
@@ -87,8 +87,8 @@ public class WorldWrappingPortal extends GlobalTrackedPortal {
         portal.setPos(center.x, center.y, center.z);
         portal.setDestination(destination);
         
-        portal.setAxisW(Vec3.atLowerCornerOf(axises.getA().getNormal()));
-        portal.setAxisH(Vec3.atLowerCornerOf(axises.getB().getNormal()));
+        portal.setAxisW(Vec3.atLowerCornerOf(axises.getA().getUnitVec3i()));
+        portal.setAxisH(Vec3.atLowerCornerOf(axises.getB().getUnitVec3i()));
         portal.setWidth(Helper.getCoordinate(areaSize, axises.getA().getAxis()));
         portal.setHeight(Helper.getCoordinate(areaSize, axises.getB().getAxis()));
         

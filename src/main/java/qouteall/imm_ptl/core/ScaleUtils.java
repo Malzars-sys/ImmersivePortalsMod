@@ -1,11 +1,13 @@
 package qouteall.imm_ptl.core;
 
+import net.minecraft.util.profiling.Profiler;
+
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
@@ -23,8 +25,8 @@ public class ScaleUtils {
     /**
      * It's the id of attribute modifier of scale.
      */
-    public static final ResourceLocation IPORTAL_SCALING =
-        ResourceLocation.fromNamespaceAndPath("iportal", "scaling");
+    public static final Identifier IPORTAL_SCALING =
+        Identifier.fromNamespaceAndPath("iportal", "scaling");
     
     @Environment(EnvType.CLIENT)
     public static void onClientPlayerTeleported(Portal portal) {

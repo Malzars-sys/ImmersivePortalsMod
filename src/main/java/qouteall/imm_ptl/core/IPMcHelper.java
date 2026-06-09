@@ -205,7 +205,7 @@ public class IPMcHelper {
             return new Tuple<>(
                 BlockHitResult.miss(
                     end,
-                    Direction.getNearest(diff.x, diff.y, diff.z),
+                    Direction.getApproximateNearest(diff.x, diff.y, diff.z),
                     BlockPos.containing(end)
                 ),
                 portals

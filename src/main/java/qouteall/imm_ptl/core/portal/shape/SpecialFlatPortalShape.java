@@ -1,5 +1,7 @@
 package qouteall.imm_ptl.core.portal.shape;
 
+import net.minecraft.util.profiling.Profiler;
+
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.nbt.CompoundTag;

@@ -1,5 +1,5 @@
 plugins {
-    id 'fabric-loom' version '1.8-SNAPSHOT'
+    id 'net.fabricmc.fabric-loom' version "${loom_version}"
 
     id 'maven-publish'
 
@@ -67,64 +67,58 @@ loom {
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
 
-    mappings loom.layered() {
-        officialMojangMappings() {
-            setNameSyntheticMembers(false)
-        }
-        parchment("org.parchmentmc.data:parchment-1.21:2024.07.28")
-    }
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
-    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-
-    modImplementation("net.fabricmc.fabric-api:fabric-api:${project.fabric_version}") {
+    implementation("net.fabricmc.fabric-api:fabric-api:${project.fabric_version}") {
         exclude module: "fabric-gametest-api-v1"
         // for now, the gametest module makes client unable to login dev env server
     }
 
-    modApi("me.shedaniel.cloth:cloth-config-fabric:${cloth_config_version}") {
+    api("me.shedaniel.cloth:cloth-config-fabric:${cloth_config_version}") {
         exclude(group: "net.fabricmc.fabric-api")
     }
     include "me.shedaniel.cloth:cloth-config-fabric:${cloth_config_version}"
 
-    modCompileOnly "maven.modrinth:modmenu:${modmenu_version}"
-    modLocalRuntime "maven.modrinth:modmenu:${modmenu_version}"
+    compileOnly "maven.modrinth:modmenu:${modmenu_version}"
+    runtimeOnly "maven.modrinth:modmenu:${modmenu_version}"
 
-    modCompileOnly "${project.sodium_path}"
+    if (!project.vanilla_core_compile.equals('true')) {
+        compileOnly "${project.sodium_path}"
+        compileOnly "${project.iris_path}"
+    }
 
-    modCompileOnly "${project.iris_path}"
-
-    modCompileOnly("com.github.qouteall:GravityChanger:${gravity_changer_version}") {
+    compileOnly("com.github.qouteall:GravityChanger:${gravity_changer_version}") {
         exclude(group: "net.fabricmc.fabric-api")
         transitive(false)
     }
 
-    modApi("com.github.iPortalTeam:DimLib:${dimlib_version}") {
+    api("com.github.iPortalTeam:DimLib:${dimlib_version}") {
         exclude(group: "net.fabricmc.fabric-api")
     }
     include("com.github.iPortalTeam:DimLib:${dimlib_version}")
 
     // put these into inner mod to reduce duplicate MC jar
 
-    if (project.enable_sodium.equals('true')) {
-        modLocalRuntime "${project.sodium_path}"
+    if (!project.vanilla_core_compile.equals('true') && project.enable_sodium.equals('true')) {
+        runtimeOnly "${project.sodium_path}"
     }
 
-    if (project.enable_iris.equals('true')) {
-        modLocalRuntime "${project.iris_path}"
+    if (!project.vanilla_core_compile.equals('true') && project.enable_iris.equals('true')) {
+        runtimeOnly "${project.iris_path}"
         implementation "org.anarres:jcpp:1.4.14" // for iris
         implementation 'io.github.douira:glsl-transformer:2.0.0-pre13' // for iris
         implementation 'org.antlr:antlr4-runtime:4.11.1' // for iris
     }
 
     if (project.enable_gravity_changer.equals('true')) {
-        modLocalRuntime("com.github.qouteall:GravityChanger:${gravity_changer_version}") {
+        runtimeOnly("com.github.qouteall:GravityChanger:${gravity_changer_version}") {
             exclude(group: "net.fabricmc.fabric-api")
         }
     }
 
     if (project.enable_geckolib.equals('true')) {
         // for testing portal gun using dev jar
-        modLocalRuntime('software.bernie.geckolib:geckolib-fabric-1.20:4.2') {
+        runtimeOnly('software.bernie.geckolib:geckolib-fabric-1.20:4.2') {
             transitive(false)
         }
     }
@@ -144,23 +138,62 @@ dependencies {
 
             System.out.println("Found test mod: " + it.name.replace(".jar", "") + " -> " + name)
 
-            modImplementation name
+            implementation name
         }
     }
     testImplementation(platform('org.junit:junit-bom:5.10.0'))
     testImplementation('org.junit.jupiter:junit-jupiter')
 }
 
+if (project.vanilla_core_compile.equals('true')) {
+    sourceSets.main.java {
+        exclude 'qouteall/imm_ptl/core/compat/mixin/iris/**'
+        exclude 'qouteall/imm_ptl/core/compat/mixin/sodium/**'
+        exclude 'qouteall/imm_ptl/core/compat/iris_compatibility/ExperimentalIrisPortalRenderer.java'
+        exclude 'qouteall/imm_ptl/core/compat/iris_compatibility/IEIrisNewWorldRenderingPipeline.java'
+        exclude 'qouteall/imm_ptl/core/compat/iris_compatibility/IEIrisShadowRenderTargets.java'
+        exclude 'qouteall/imm_ptl/core/compat/iris_compatibility/IPIrisHelper.java'
+        exclude 'qouteall/imm_ptl/core/compat/iris_compatibility/IrisCompatibilityPortalRenderer.java'
+        exclude 'qouteall/imm_ptl/core/compat/iris_compatibility/IrisPortalRenderer.java'
+        exclude 'qouteall/imm_ptl/core/compat/iris_compatibility/ShadowMapSwapper.java'
+        exclude 'qouteall/imm_ptl/core/compat/sodium_compatibility/IESodiumRenderSectionManager.java'
+        exclude 'qouteall/imm_ptl/core/compat/sodium_compatibility/SodiumRenderingContext.java'
+        exclude 'qouteall/imm_ptl/core/mixin/client/render/MixinShaderInstanceForIris.java'
+        exclude 'qouteall/imm_ptl/core/mixin/client/render/MixinLevelRenderer_BeforeIris.java'
+    }
+}
+
 processResources {
     inputs.property "version", project.version
+    inputs.property "vanilla_core_compile", project.vanilla_core_compile
 
     filesMatching("fabric.mod.json") {
         expand "version": project.version
+        if (project.vanilla_core_compile.equals('true')) {
+            filter { line ->
+                line.contains('"imm_ptl_compat.mixins.json",') ? null : line
+            }
+        }
+    }
+
+    filesMatching("imm_ptl.mixins.json") {
+        if (project.vanilla_core_compile.equals('true')) {
+            filter { line ->
+                if (line.contains('"client.render.MixinLevelRenderer_BeforeIris",')) return null
+                if (line.contains('"client.render.MixinShaderInstanceForIris",')) return null
+                return line
+            }
+        }
+    }
+
+    if (project.vanilla_core_compile.equals('true')) {
+        exclude "imm_ptl_compat.mixins.json"
     }
 }
 
 tasks.withType(JavaCompile).configureEach {
-    it.options.release = 17
+    it.options.release = 25
+    it.options.compilerArgs += ['-Xmaxerrs', '2000']
 }
 
 java {
@@ -169,13 +202,13 @@ java {
     // If you remove this line, sources will not be generated.
     withSourcesJar()
 
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
 }
 
 
 // change the output file name
-remapJar {
+jar {
     afterEvaluate {
         archiveFileName = "${project.archives_base_name}-${project.mod_version}-mc${project.minecraft_version}-fabric.jar"
     }
@@ -217,7 +250,7 @@ task printClasspath {
 //}
 
 publishMods {
-    file = remapJar.archiveFile
+    file = jar.archiveFile
     changelog = file("changelog.md").text
     type = ALPHA
     modLoaders.add("fabric")

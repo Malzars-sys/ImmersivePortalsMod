@@ -1,5 +1,7 @@
 package qouteall.imm_ptl.core.render;
 
+import net.minecraft.util.profiling.Profiler;
+
 import com.mojang.blaze3d.platform.Lighting;
 import com.mojang.blaze3d.systems.RenderSystem;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -8,9 +10,9 @@ import net.fabricmc.api.Environment;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.renderer.FogRenderer;
+import net.minecraft.client.renderer.fog.FogRenderer;
 import net.minecraft.client.renderer.LevelRenderer;
-import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.client.renderer.Lightmap;
 import net.minecraft.client.renderer.PostChain;
 import net.minecraft.client.renderer.RenderBuffers;
 import net.minecraft.client.renderer.SectionBufferBuilderPack;
@@ -141,7 +143,7 @@ public class MyGameRenderer {
         // store old state
         ClientLevel oldWorld = client.level;
         LevelRenderer oldWorldRenderer = client.levelRenderer;
-        LightTexture oldLightmap = client.gameRenderer.lightTexture();
+        Lightmap oldLightmap = ieGameRenderer.ip_getLightmap();
         boolean oldNoClip = client.player.noPhysics;
         boolean oldDoRenderHand = ieGameRenderer.ip_getDoRenderHand();
         ObjectArrayList<SectionRenderDispatcher.RenderSection> oldChunkInfoList =
@@ -220,18 +222,15 @@ public class MyGameRenderer {
         
         IrisInterface.invoker.setPipeline(worldRenderer, null);
         
-        //update lightmap
-        if (!RenderStates.isDimensionRendered(newDimension)) {
-            helper.lightmapTexture.updateLightTexture(0);
-        }
+        // The 26.1 renderer extracts and uploads the active lightmap state.
         
         //invoke rendering
         invokeWrapper.accept(() -> {
-            client.getProfiler().push("render_portal_content");
+            Profiler.get().push("render_portal_content");
             client.gameRenderer.renderLevel(
                 client.getTimer()
             );
-            client.getProfiler().pop();
+            Profiler.get().pop();
         });
         
         SodiumInterface.invoker.switchContextWithCurrentWorldRenderer(newSodiumContext);
@@ -292,7 +291,7 @@ public class MyGameRenderer {
         Camera camera = client.gameRenderer.getMainCamera();
         float g = client.gameRenderer.getRenderDistance();
         
-        Vec3 cameraPos = camera.getPosition();
+        Vec3 cameraPos = camera.position();
         double x = cameraPos.x();
         double y = cameraPos.y();
         double z = cameraPos.z();

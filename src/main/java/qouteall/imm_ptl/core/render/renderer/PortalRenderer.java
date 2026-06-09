@@ -1,11 +1,11 @@
 package qouteall.imm_ptl.core.render.renderer;
 
-import com.mojang.blaze3d.platform.GlStateManager;
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.fabricmc.fabric.api.event.Event;
 import net.fabricmc.fabric.api.event.EventFactory;
-import net.minecraft.client.GraphicsStatus;
+import net.minecraft.client.GraphicsPreset;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.culling.Frustum;
@@ -19,10 +19,7 @@ import qouteall.imm_ptl.core.ClientWorldLoader;
 import qouteall.imm_ptl.core.IPCGlobal;
 import qouteall.imm_ptl.core.IPGlobal;
 import qouteall.imm_ptl.core.compat.IPModInfoChecking;
-import qouteall.imm_ptl.core.compat.iris_compatibility.ExperimentalIrisPortalRenderer;
-import qouteall.imm_ptl.core.compat.iris_compatibility.IrisCompatibilityPortalRenderer;
 import qouteall.imm_ptl.core.compat.iris_compatibility.IrisInterface;
-import qouteall.imm_ptl.core.compat.iris_compatibility.IrisPortalRenderer;
 import qouteall.imm_ptl.core.portal.Mirror;
 import qouteall.imm_ptl.core.portal.Portal;
 import qouteall.imm_ptl.core.portal.global_portals.GlobalPortalStorage;
@@ -90,7 +87,7 @@ public abstract class PortalRenderer {
                 RenderSystem.getProjectionMatrix()
             );
             
-            Vec3 cameraPos = client.gameRenderer.getMainCamera().getPosition();
+            Vec3 cameraPos = client.gameRenderer.getMainCamera().position();
             frustum.prepare(cameraPos.x, cameraPos.y, cameraPos.z);
             
             return frustum;
@@ -315,7 +312,7 @@ public abstract class PortalRenderer {
             return;
         }
         
-        if (Minecraft.getInstance().options.graphicsMode().get() == GraphicsStatus.FABULOUS) {
+        if (Minecraft.getInstance().options.graphicsPreset().get() == GraphicsPreset.FABULOUS) {
             if (!fabulousWarned) {
                 fabulousWarned = true;
                 CHelper.printChat(Component.translatable("imm_ptl.fabulous_warning"));
@@ -323,23 +320,6 @@ public abstract class PortalRenderer {
         }
         
         IPModInfoChecking.checkShaderpack();
-        
-        if (IrisInterface.invoker.isIrisPresent()) {
-            if (IrisInterface.invoker.isShaders()) {
-                if (IPCGlobal.experimentalIrisPortalRenderer) {
-                    switchRenderer(ExperimentalIrisPortalRenderer.instance);
-                    return;
-                }
-                
-                switch (IPGlobal.renderMode) {
-                    case normal -> switchRenderer(IrisPortalRenderer.instance);
-                    case compatibility -> switchRenderer(IrisCompatibilityPortalRenderer.instance);
-                    case debug -> switchRenderer(IrisCompatibilityPortalRenderer.debugModeInstance);
-                    case none -> switchRenderer(IPCGlobal.rendererDummy);
-                }
-                return;
-            }
-        }
         
         switch (IPGlobal.renderMode) {
             case normal -> switchRenderer(IPCGlobal.rendererUsingStencil);

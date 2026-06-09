@@ -1,7 +1,7 @@
 package qouteall.imm_ptl.peripheral.dim_stack;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
@@ -291,18 +291,9 @@ public class DimStackEntryEditScreen extends Screen {
     }
     
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float delta) {
-        this.renderBackground(guiGraphics, mouseX, mouseY, delta);
-        
-        super.render(guiGraphics, mouseX, mouseY, delta);
-        
-        scaleField.render(guiGraphics, mouseX, mouseY, delta);
-        horizontalRotationField.render(guiGraphics, mouseX, mouseY, delta);
-        topYField.render(guiGraphics, mouseX, mouseY, delta);
-        bottomYField.render(guiGraphics, mouseX, mouseY, delta);
-        bedrockBlockField.render(guiGraphics, mouseX, mouseY, delta);
-        connectsPreviousButton.render(guiGraphics, mouseX, mouseY, delta);
-        connectsNextButton.render(guiGraphics, mouseX, mouseY, delta);
+    public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float delta) {
+        this.extractBackground(guiGraphics, mouseX, mouseY, delta);
+        super.extractRenderState(guiGraphics, mouseX, mouseY, delta);
         
         scaleLabelRect.renderTextLeft(Component.translatable("imm_ptl.scale"), guiGraphics);
         flipLabelRect.renderTextLeft(Component.translatable("imm_ptl.flipped"), guiGraphics);

@@ -26,7 +26,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.Ticket;
 import net.minecraft.server.level.TicketType;
-import net.minecraft.util.SortedArraySet;
 import net.minecraft.util.profiling.ActiveProfiler;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ChunkPos;
@@ -251,7 +250,7 @@ public class PortalDebugCommands {
                 .executes(context -> {
                     ServerPlayer player = context.getSource().getPlayerOrException();
                     
-                    ChunkPos center = new ChunkPos(BlockPos.containing(player.position()));
+                    ChunkPos center = ChunkPos.containing(BlockPos.containing(player.position()));
                     
                     invokeEraseChunk(
                         player.level(), center,
@@ -267,7 +266,7 @@ public class PortalDebugCommands {
                             
                             ServerPlayer player = context.getSource().getPlayerOrException();
                             
-                            ChunkPos center = new ChunkPos(BlockPos.containing(player.position()));
+                            ChunkPos center = ChunkPos.containing(BlockPos.containing(player.position()));
                             
                             invokeEraseChunk(
                                 player.level(), center,
@@ -365,9 +364,9 @@ public class PortalDebugCommands {
                         ServerLevel world = DimensionArgument.getDimension(context, "dim");
                         ServerPlayer player = context.getSource().getPlayerOrException();
                         BlockPos pos = BlockPosArgument.getBlockPos(context, "pos");
-                        ChunkPos chunkPos = new ChunkPos(pos);
+                        ChunkPos chunkPos = ChunkPos.containing(pos);
                         
-                        doReportChunkStatus(chunkPos.x, chunkPos.z, world, player);
+                        doReportChunkStatus(chunkPos.x(), chunkPos.z(), world, player);
                         
                         return 0;
                     })
@@ -382,7 +381,7 @@ public class PortalDebugCommands {
                 CHelper.printChat(
                     String.format(
                         "On Server %s %s removal:%s added:%s age:%s",
-                        player.level().dimension().location(),
+                        player.level().dimension().identifier(),
                         player.blockPosition(),
                         player.getRemovalReason(),
                         player.level().getEntity(player.getId()) != null,
@@ -408,7 +407,7 @@ public class PortalDebugCommands {
                 result.append("Server Portals\n");
                 
                 for (ServerLevel world : MiscHelper.getServer().getAllLevels()) {
-                    result.append(world.dimension().location().toString() + "\n");
+                    result.append(world.dimension().identifier().toString() + "\n");
                     for (Entity entity : world.getAllEntities()) {
                         for (Entity e : world.getAllEntities()) {
                             if (e instanceof Portal) {
@@ -458,21 +457,21 @@ public class PortalDebugCommands {
                 ServerLevel world = context.getSource().getLevel();
                 Iterable<ChunkHolder> chunkHolders = ((IEChunkMap_Accessor) world.getChunkSource().chunkMap).ip_getChunks();
                 
-                Object2IntOpenHashMap<TicketType<?>> stat = new Object2IntOpenHashMap<>();
+                Object2IntOpenHashMap<TicketType> stat = new Object2IntOpenHashMap<>();
                 for (ChunkHolder chunkHolder : chunkHolders) {
-                    long chunkPos = chunkHolder.getPos().toLong();
-                    SortedArraySet<Ticket<?>> chunkTickets =
+                    long chunkPos = chunkHolder.getPos().pack();
+                    List<Ticket> chunkTickets =
                         ((IEDistanceManager) getDistanceManager(world))
                             .portal_getTicketSet(chunkPos);
                     
-                    for (Ticket<?> ticket : chunkTickets) {
+                    for (Ticket ticket : chunkTickets) {
                         stat.addTo(ticket.getType(), 1);
                     }
                 }
                 
                 context.getSource().sendSuccess(() -> Component.literal(""), false);
-                for (Object2IntMap.Entry<TicketType<?>> entry : stat.object2IntEntrySet()) {
-                    TicketType<?> ticketType = entry.getKey();
+                for (Object2IntMap.Entry<TicketType> entry : stat.object2IntEntrySet()) {
+                    TicketType ticketType = entry.getKey();
                     context.getSource().sendSuccess(
                         () -> Component.literal(ticketType.toString() + " " + entry.getIntValue()),
                         false
@@ -581,7 +580,7 @@ public class PortalDebugCommands {
                 Registry<Biome> biomes = registryAccess.registryOrThrow(Registries.BIOME);
                 Map<String, Integer> map = new HashMap<>();
                 for (Map.Entry<ResourceKey<Biome>, Biome> entry : biomes.entrySet()) {
-                    String strId = entry.getKey().location().toString();
+                    String strId = entry.getKey().identifier().toString();
                     int intId = biomes.getId(entry.getValue());
                     map.put(strId, intId);
                 }
@@ -603,7 +602,7 @@ public class PortalDebugCommands {
 //                Registry<Biome> biomes = MiscHelper.getServer().registryAccess().registryOrThrow(Registries.BIOME);
 //
 //                StringBuilder builder1 = new StringBuilder();
-//                for (ResourceLocation resourceLocation : biomes.keySet()) {
+//                for (Identifier resourceLocation : biomes.keySet()) {
 //                    builder1.append("\"");
 //                    builder1.append(resourceLocation);
 //                    builder1.append("\",\n");
@@ -695,7 +694,7 @@ public class PortalDebugCommands {
         
         boolean loaded = chunk != null && !(chunk instanceof EmptyLevelChunk);
         
-        long longChunkPos = ChunkPos.asLong(chunkX, chunkZ);
+        long longChunkPos = ChunkPos.pack(chunkX, chunkZ);
         if (loaded) {
             boolean shouldTickEntities =
                 getDistanceManager(world).inEntityTickingRange(longChunkPos);
@@ -729,8 +728,8 @@ public class PortalDebugCommands {
             
             DistanceManager distanceManager =
                 ((IEServerChunkCache) world.getChunkSource()).ip_getDistanceManager();
-            SortedArraySet<Ticket<?>> tickets = ((IEDistanceManager) distanceManager).portal_getTicketSet(longChunkPos);
-            for (Ticket<?> ticket : tickets) {
+            List<Ticket> tickets = ((IEDistanceManager) distanceManager).portal_getTicketSet(longChunkPos);
+            for (Ticket ticket : tickets) {
                 McHelper.serverLog(
                     player,
                     ticket.toString()
@@ -753,7 +752,7 @@ public class PortalDebugCommands {
         
         subStr.append(String.format(
             "%s:\nImmPtl Tracked Chunks: %s\nImmPtl Loading Ticket:%s\nChunks: %s\nEntities:%s Entity Sections:%s\n",
-            world.dimension().location(),
+            world.dimension().identifier(),
             ImmPtlChunkTracking.getLoadedChunkNum(world.dimension()),
             dimTicketManager.getLoadedChunkNum(),
             world.getChunkSource().chunkMap.size(),
@@ -782,7 +781,7 @@ public class PortalDebugCommands {
         ArrayList<ChunkPos> poses = new ArrayList<>();
         for (int x = -r; x <= r; x++) {
             for (int z = -r; z <= r; z++) {
-                poses.add(new ChunkPos(x + center.x, z + center.z));
+                poses.add(new ChunkPos(x + center.x(), z + center.z()));
             }
         }
         poses.sort(Comparator.comparingDouble(c ->

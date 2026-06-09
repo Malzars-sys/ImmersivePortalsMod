@@ -28,7 +28,7 @@ import java.util.function.Predicate;
 public class BreakableMirror extends Mirror {
     
     public static final EntityType<BreakableMirror> ENTITY_TYPE =
-        createPortalEntityType(BreakableMirror::new);
+        createPortalEntityType("breakable_mirror", BreakableMirror::new);
     
     @Nullable
     public IntBox wallArea;
@@ -41,19 +41,19 @@ public class BreakableMirror extends Mirror {
     }
     
     @Override
-    protected void readAdditionalSaveData(CompoundTag tag) {
-        super.readAdditionalSaveData(tag);
+    protected void readPortalData(CompoundTag tag) {
+        super.readPortalData(tag);
         if (tag.contains("boxXL")) {
             wallArea = new IntBox(
                 new BlockPos(
-                    tag.getInt("boxXL"),
-                    tag.getInt("boxYL"),
-                    tag.getInt("boxZL")
+                    tag.getIntOr("boxXL", 0),
+                    tag.getIntOr("boxYL", 0),
+                    tag.getIntOr("boxZL", 0)
                 ),
                 new BlockPos(
-                    tag.getInt("boxXH"),
-                    tag.getInt("boxYH"),
-                    tag.getInt("boxZH")
+                    tag.getIntOr("boxXH", 0),
+                    tag.getIntOr("boxYH", 0),
+                    tag.getIntOr("boxZH", 0)
                 )
             );
         }
@@ -61,19 +61,19 @@ public class BreakableMirror extends Mirror {
             wallArea = null;
         }
         if (tag.contains("blockPortalShape")) {
-            blockPortalShape = BlockPortalShape.fromTag(tag.getCompound("blockPortalShape"));
+            blockPortalShape = BlockPortalShape.fromTag(tag.getCompoundOrEmpty("blockPortalShape"));
         }
         else {
             blockPortalShape = null;
         }
         if (tag.contains("unbreakable")) {
-            unbreakable = tag.getBoolean("unbreakable");
+            unbreakable = tag.getBooleanOr("unbreakable", false);
         }
     }
     
     @Override
-    protected void addAdditionalSaveData(CompoundTag tag) {
-        super.addAdditionalSaveData(tag);
+    protected void writePortalData(CompoundTag tag) {
+        super.writePortalData(tag);
         if (wallArea != null) {
             tag.putInt("boxXL", wallArea.l.getX());
             tag.putInt("boxYL", wallArea.l.getY());
@@ -187,7 +187,7 @@ public class BreakableMirror extends Mirror {
             pos, facing.getAxis(),
             Helper.getCoordinate(
                 shape.innerAreaBox.getCenterVec().add(
-                    Vec3.atLowerCornerOf(facing.getNormal()).scale(distanceToCenter)
+                    Vec3.atLowerCornerOf(facing.getUnitVec3i()).scale(distanceToCenter)
                 ),
                 facing.getAxis()
             )
@@ -201,8 +201,8 @@ public class BreakableMirror extends Mirror {
         Direction hDirection = perpendicularDirections.getB();
         breakableMirror.setWidth(Helper.getCoordinate(Helper.getBoxSize(wallBox), wDirection.getAxis()));
         breakableMirror.setHeight(Helper.getCoordinate(Helper.getBoxSize(wallBox), hDirection.getAxis()));
-        breakableMirror.setAxisW(Vec3.atLowerCornerOf(wDirection.getNormal()));
-        breakableMirror.setAxisH(Vec3.atLowerCornerOf(hDirection.getNormal()));
+        breakableMirror.setAxisW(Vec3.atLowerCornerOf(wDirection.getUnitVec3i()));
+        breakableMirror.setAxisH(Vec3.atLowerCornerOf(hDirection.getUnitVec3i()));
         
         initializeMirrorGeometryShape(breakableMirror, facing, shape);
         

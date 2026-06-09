@@ -171,7 +171,7 @@ public class NetherPortalGeneration {
             frameSearchingRadius :
             (fromShape.getShapeInnerLength() < 16 ? 1 : 2);
         ChunkLoader chunkLoader = new ChunkLoader(
-            new DimensionalChunkPos(toDimension, new ChunkPos(toPos)), loaderRadius
+            new DimensionalChunkPos(toDimension, ChunkPos.containing(toPos)), loaderRadius
         );
         
         ImmPtlChunkTracking.addGlobalAdditionalChunkLoader(server, chunkLoader);
@@ -256,7 +256,7 @@ public class NetherPortalGeneration {
         }
         
         limitedLogger.log(String.format("Portal Generation Attempted %s %s %s %s",
-            fromWorld.dimension().location(), startingPos.getX(), startingPos.getY(), startingPos.getZ()
+            fromWorld.dimension().identifier(), startingPos.getX(), startingPos.getY(), startingPos.getZ()
         ));
         return true;
     }

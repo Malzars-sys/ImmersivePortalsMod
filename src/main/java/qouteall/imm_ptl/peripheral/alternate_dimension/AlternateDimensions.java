@@ -34,37 +34,37 @@ public class AlternateDimensions {
     
     public static final ResourceKey<DimensionType> SURFACE_TYPE = ResourceKey.create(
         Registries.DIMENSION_TYPE,
-        McHelper.newResourceLocation("immersive_portals:surface_type")
+        McHelper.newIdentifier("immersive_portals:surface_type")
     );
     
     public static final ResourceKey<DimensionType> SURFACE_TYPE_BRIGHT = ResourceKey.create(
         Registries.DIMENSION_TYPE,
-        McHelper.newResourceLocation("immersive_portals:surface_type_bright")
+        McHelper.newIdentifier("immersive_portals:surface_type_bright")
     );
     
     public static final ResourceKey<Level> SKYLAND = ResourceKey.create(
         Registries.DIMENSION,
-        McHelper.newResourceLocation("immersive_portals:skyland")
+        McHelper.newIdentifier("immersive_portals:skyland")
     );
     
     public static final ResourceKey<Level> BRIGHT_SKYLAND = ResourceKey.create(
         Registries.DIMENSION,
-        McHelper.newResourceLocation("immersive_portals:bright_skyland")
+        McHelper.newIdentifier("immersive_portals:bright_skyland")
     );
     
     public static final ResourceKey<Level> CHAOS = ResourceKey.create(
         Registries.DIMENSION,
-        McHelper.newResourceLocation("immersive_portals:chaos")
+        McHelper.newIdentifier("immersive_portals:chaos")
     );
     
     public static final ResourceKey<Level> VOID = ResourceKey.create(
         Registries.DIMENSION,
-        McHelper.newResourceLocation("immersive_portals:void")
+        McHelper.newIdentifier("immersive_portals:void")
     );
     
     public static final ResourceKey<Level> BRIGHT_VOID = ResourceKey.create(
         Registries.DIMENSION,
-        McHelper.newResourceLocation("immersive_portals:bright_void")
+        McHelper.newIdentifier("immersive_portals:bright_void")
     );
     
     public static final DimensionTemplate SKYLAND_TEMPLATE = new DimensionTemplate(
@@ -144,7 +144,7 @@ public class AlternateDimensions {
         if (dimStackInfo.hasDimension(BRIGHT_SKYLAND)) {
             DimensionAPI.addDimensionIfNotExists(
                 server,
-                BRIGHT_SKYLAND.location(),
+                BRIGHT_SKYLAND.identifier(),
                 () -> BRIGHT_SKYLAND_TEMPLATE.createLevelStem(server)
             );
         }
@@ -152,7 +152,7 @@ public class AlternateDimensions {
         if (dimStackInfo.hasDimension(SKYLAND)) {
             DimensionAPI.addDimensionIfNotExists(
                 server,
-                SKYLAND.location(),
+                SKYLAND.identifier(),
                 () -> SKYLAND_TEMPLATE.createLevelStem(server)
             );
         }
@@ -160,7 +160,7 @@ public class AlternateDimensions {
         if (dimStackInfo.hasDimension(CHAOS)) {
             DimensionAPI.addDimensionIfNotExists(
                 server,
-                CHAOS.location(),
+                CHAOS.identifier(),
                 () -> CHAOS_TEMPLATE.createLevelStem(server)
             );
         }
@@ -168,7 +168,7 @@ public class AlternateDimensions {
         if (dimStackInfo.hasDimension(VOID)) {
             DimensionAPI.addDimensionIfNotExists(
                 server,
-                VOID.location(),
+                VOID.identifier(),
                 () -> DimensionTemplate.VOID_TEMPLATE.createLevelStem(server)
             );
         }
@@ -176,7 +176,7 @@ public class AlternateDimensions {
         if (dimStackInfo.hasDimension(BRIGHT_VOID)) {
             DimensionAPI.addDimensionIfNotExists(
                 server,
-                BRIGHT_VOID.location(),
+                BRIGHT_VOID.identifier(),
                 () -> BRIGHT_VOID_TEMPLATE.createLevelStem(server)
             );
         }

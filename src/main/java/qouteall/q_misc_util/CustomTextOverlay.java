@@ -6,8 +6,7 @@ import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.Gui;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.MultiLineLabel;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import org.jetbrains.annotations.Nullable;
@@ -30,7 +29,7 @@ public class CustomTextOverlay {
     private static final boolean renderAtBottomCenter = true;
     
     @Nullable
-    private static MultiLineLabel multiLineLabelCache;
+    private static Component textCache;
     
     public static void putText(Component component, double durationSeconds, String key) {
         ENTRIES.put(
@@ -40,7 +39,7 @@ public class CustomTextOverlay {
                 System.nanoTime() + Helper.secondToNano(durationSeconds)
             )
         );
-        multiLineLabelCache = null;
+        textCache = null;
     }
     
     public static void putText(Component component, double durationSeconds) {
@@ -60,22 +59,22 @@ public class CustomTextOverlay {
     }
     
     /**
-     * {@link Gui#render(GuiGraphics, float)}
+     * {@link Gui#extractRenderState(GuiGraphicsExtractor, DeltaTracker)}
      * {@link net.minecraft.client.gui.screens.AlertScreen}
      */
-    public static void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
+    public static void render(GuiGraphicsExtractor guiGraphics, DeltaTracker deltaTracker) {
         long currTime = System.nanoTime();
         
         boolean removes = ENTRIES.entrySet().removeIf(e -> e.getValue().clearingTime < currTime);
         if (removes) {
-            multiLineLabelCache = null;
+            textCache = null;
         }
         
         if (ENTRIES.isEmpty()) {
             return;
         }
         
-        if (multiLineLabelCache == null) {
+        if (textCache == null) {
             // don't make the first component the base component
             // to avoid style override
             MutableComponent component = Component.empty();
@@ -90,44 +89,25 @@ public class CustomTextOverlay {
                 component.append(entry.component());
             }
             
-            multiLineLabelCache = MultiLineLabel.create(
-                Minecraft.getInstance().font,
-                component,
-                (Minecraft.getInstance().getWindow().getGuiScaledWidth() - 20)
-            );
-            assert multiLineLabelCache != null;
+            textCache = component;
         }
         
         Minecraft minecraft = Minecraft.getInstance();
-        
-        guiGraphics.pose().pushPose();
         
         int guiScaledWidth = minecraft.getWindow().getGuiScaledWidth();
         int guiScaledHeight = minecraft.getWindow().getGuiScaledHeight();
         
         Font font = minecraft.gui.getFont();
         
-        minecraft.getProfiler().push("imm_ptl_custom_overlay");
         if (renderAtBottomCenter) {
-            // Note: the parchment names are incorrect
-            multiLineLabelCache.renderCentered(
-                guiGraphics,
-                guiScaledWidth / 2, // x
-                (int) (guiScaledHeight * 0.75) // y
+            guiGraphics.textWithWordWrap(
+                font, textCache, 10, (int) (guiScaledHeight * 0.75),
+                guiScaledWidth - 20, 0xffffffff
             );
         }
         else {
-            multiLineLabelCache.renderLeftAligned(
-                guiGraphics,
-                10, // x
-                10, // y
-                9, // line height
-                0xffffffff // color
-            );
+            guiGraphics.textWithWordWrap(font, textCache, 10, 10, guiScaledWidth - 20, 0xffffffff);
         }
         
-        guiGraphics.pose().popPose();
-        
-        minecraft.getProfiler().pop();
     }
 }
