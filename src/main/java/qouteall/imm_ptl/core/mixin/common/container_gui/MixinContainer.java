@@ -22,7 +22,8 @@ public interface MixinContainer {
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/world/entity/player/Player;canInteractWithBlock(Lnet/minecraft/core/BlockPos;D)Z"
-        )
+        ),
+        require = 0
     )
     private static boolean wrapCanInteractWithBlock(
         Player player, BlockPos blockPos, double distance, Operation<Boolean> operation,

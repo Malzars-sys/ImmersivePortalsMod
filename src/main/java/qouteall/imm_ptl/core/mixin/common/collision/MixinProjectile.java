@@ -17,7 +17,8 @@ public abstract class MixinProjectile extends MixinEntity {
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/server/level/ServerLevel;getEntity(Ljava/util/UUID;)Lnet/minecraft/world/entity/Entity;"
-        )
+        ),
+        require = 0
     )
     private Entity redirectGetEntityFromUuid(
         net.minecraft.server.level.ServerLevel serverLevel,

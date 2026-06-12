@@ -52,7 +52,7 @@ public class MiscNetworking {
             CompoundTag dimIntIdTag = rec.toTag(dim -> true);
             
             RegistryAccess registryManager = server.registryAccess();
-            Registry<DimensionType> dimensionTypes = registryManager.registryOrThrow(Registries.DIMENSION_TYPE);
+            Registry<DimensionType> dimensionTypes = registryManager.lookupOrThrow(Registries.DIMENSION_TYPE);
             
             CompoundTag dimIdToDimTypeIdTag = new CompoundTag();
             for (ServerLevel world : server.getAllLevels()) {
@@ -79,7 +79,7 @@ public class MiscNetworking {
         }
         
         public static Packet<ClientCommonPacketListener> createPacket(MinecraftServer server) {
-            return ServerPlayNetworking.createS2CPacket(
+            return ServerPlayNetworking.createClientboundPacket(
                 DimIdSyncPacket.createFromServer(server)
             );
         }
@@ -104,12 +104,12 @@ public class MiscNetworking {
             ImmutableMap.Builder<ResourceKey<Level>, ResourceKey<DimensionType>> builder =
                 new ImmutableMap.Builder<>();
             
-            for (String key : dimTypeTag.getAllKeys()) {
+            for (String key : dimTypeTag.keySet()) {
                 ResourceKey<Level> dimId = ResourceKey.create(
                     Registries.DIMENSION,
                     McHelper.newIdentifier(key)
                 );
-                String dimTypeId = dimTypeTag.getString(key);
+                String dimTypeId = dimTypeTag.getStringOr(key, "");
                 ResourceKey<DimensionType> dimType = ResourceKey.create(
                     Registries.DIMENSION_TYPE,
                     McHelper.newIdentifier(dimTypeId)
@@ -142,7 +142,7 @@ public class MiscNetworking {
     }
     
     public static void init() {
-        PayloadTypeRegistry.playS2C().register(
+        PayloadTypeRegistry.clientboundPlay().register(
             DimIdSyncPacket.TYPE, DimIdSyncPacket.CODEC
         );
     }

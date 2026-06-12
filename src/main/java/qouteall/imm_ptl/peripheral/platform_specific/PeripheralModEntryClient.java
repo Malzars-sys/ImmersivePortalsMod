@@ -1,6 +1,7 @@
 package qouteall.imm_ptl.peripheral.platform_specific;
 
 import net.fabricmc.api.ClientModInitializer;
+import qouteall.imm_ptl.peripheral.PeripheralModMain;
 
 public class PeripheralModEntryClient implements ClientModInitializer {
     public static void registerBlockRenderLayers() {

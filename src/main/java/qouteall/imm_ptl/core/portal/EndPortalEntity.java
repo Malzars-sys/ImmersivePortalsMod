@@ -11,6 +11,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
@@ -147,7 +148,7 @@ public class EndPortalEntity extends Portal {
         
         Vec3 portalCenter = thisSideBox.getCenter();
         
-        EndPortalEntity portal = EndPortalEntity.ENTITY_TYPE.create(world);
+        EndPortalEntity portal = EndPortalEntity.ENTITY_TYPE.create(world, EntitySpawnReason.TRIGGERED);
         assert portal != null;
         
         portal.setOriginPos(portalCenter);

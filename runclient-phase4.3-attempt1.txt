@@ -1,0 +1,67 @@
+
+C:\Users\simeo\Downloads\ImmersivePortalsMod>if "Windows_NT" == "Windows_NT" setlocal
+
+C:\Users\simeo\Downloads\ImmersivePortalsMod>set DIRNAME=C:\Users\simeo\Downloads\ImmersivePortalsMod\ 
+
+C:\Users\simeo\Downloads\ImmersivePortalsMod>if "C:\Users\simeo\Downloads\ImmersivePortalsMod\" == "" set DIRNAME=. 
+
+C:\Users\simeo\Downloads\ImmersivePortalsMod>set APP_BASE_NAME=gradlew 
+
+C:\Users\simeo\Downloads\ImmersivePortalsMod>set APP_HOME=C:\Users\simeo\Downloads\ImmersivePortalsMod\ 
+
+C:\Users\simeo\Downloads\ImmersivePortalsMod>for %i in ("C:\Users\simeo\Downloads\ImmersivePortalsMod\") do set APP_HOME=%~fi 
+
+C:\Users\simeo\Downloads\ImmersivePortalsMod>set APP_HOME=C:\Users\simeo\Downloads\ImmersivePortalsMod\ 
+
+C:\Users\simeo\Downloads\ImmersivePortalsMod>set DEFAULT_JVM_OPTS="-Xmx64m" "-Xms64m" 
+
+C:\Users\simeo\Downloads\ImmersivePortalsMod>if defined JAVA_HOME goto findJavaFromJavaHome 
+
+C:\Users\simeo\Downloads\ImmersivePortalsMod>set JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-25.0.3.9-hotspot\ 
+
+C:\Users\simeo\Downloads\ImmersivePortalsMod>set JAVA_EXE=C:\Program Files\Eclipse Adoptium\jdk-25.0.3.9-hotspot\/bin/java.exe 
+
+C:\Users\simeo\Downloads\ImmersivePortalsMod>if exist "C:\Program Files\Eclipse Adoptium\jdk-25.0.3.9-hotspot\/bin/java.exe" goto execute 
+
+C:\Users\simeo\Downloads\ImmersivePortalsMod>set CLASSPATH=C:\Users\simeo\Downloads\ImmersivePortalsMod\\gradle\wrapper\gradle-wrapper.jar 
+
+C:\Users\simeo\Downloads\ImmersivePortalsMod>"C:\Program Files\Eclipse Adoptium\jdk-25.0.3.9-hotspot\/bin/java.exe" "-Xmx64m" "-Xms64m"   "-Dorg.gradle.appname=gradlew" -classpath "C:\Users\simeo\Downloads\ImmersivePortalsMod\\gradle\wrapper\gradle-wrapper.jar" org.gradle.wrapper.GradleWrapperMain runClient --console=plain 
+WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::load has been called by net.rubygrapefruit.platform.internal.NativeLibraryLoader in an unnamed module (file:/C:/Users/simeo/.gradle/wrapper/dists/gradle-9.4.0-bin/lcvyxq3t37f6mx9miaydrrgs/gradle-9.4.0/lib/native-platform-0.22-milestone-29.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+
+> Configure project :
+Fabric Loom: 1.16.3
+
+> Task :compileJava UP-TO-DATE
+> Task :processResources
+> Task :classes
+> Task :generateLog4jConfig
+> Task :generateDLIConfig
+> Task :configureLaunch
+> Task :downloadAssets
+> Task :configureClientLaunch
+
+> Task :runClient
+[03:21:44] [main/INFO] (FabricLoader/GameProvider) Loading Minecraft 26.1 with Fabric Loader 0.19.3
+[03:21:44] [main/INFO] (FabricLoader/Mappings) Mappings not present!
+[03:21:44] [main/WARN] (FabricLoader/Resolution) Mod resolution failed
+[03:21:44] [main/INFO] (FabricLoader/Resolution) Immediate reason: [HARD_DEP_INCOMPATIBLE_PRESELECTED dimlib 1.1.0+mc1.21.1 {depends minecraft @ [1.21 || 1.21.1]}, ROOT_FORCELOAD_SINGLE dimlib 1.1.0+mc1.21.1]
+[03:21:44] [main/INFO] (FabricLoader/Resolution) Reason: [HARD_DEP dimlib 1.1.0+mc1.21.1 {depends minecraft @ [1.21 || 1.21.1]}]
+[03:21:44] [main/INFO] (FabricLoader/Resolution) Fix: add [], remove [], replace [[dimlib 1.1.0+mc1.21.1] -> add:dimlib 1 ([(-∞,∞)])]
+[03:21:44] [main/ERROR] (FabricLoader) Incompatible mods found!
+
+net.fabricmc.loader.impl.FormattedException: Some of your mods are incompatible with the game or each other!
+A potential solution has been determined, this may resolve your problem:
+	 - Replace mod 'DimLib' (dimlib) 1.1.0+mc1.21.1 with any version that is compatible with:
+		 - minecraft 26.1
+More details:
+	 - Mod 'DimLib' (dimlib) 1.1.0+mc1.21.1 requires version 1.21 or version 1.21.1 of 'Minecraft' (minecraft), but only the wrong version is present: 26.1!
+	at net.fabricmc.loader.impl.FormattedException.ofLocalized(FormattedException.java:51)
+	at net.fabricmc.loader.impl.FabricLoaderImpl.load(FabricLoaderImpl.java:202)
+	at net.fabricmc.loader.impl.launch.knot.Knot.init(Knot.java:142)
+	at net.fabricmc.loader.impl.launch.knot.Knot.launch(Knot.java:66)
+	at net.fabricmc.loader.impl.launch.knot.KnotClient.main(KnotClient.java:23)
+	at net.fabricmc.devlaunchinjector.Main.main(Main.java:86)

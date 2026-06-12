@@ -18,7 +18,8 @@ public class MixinAbstractContainerMenu {
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/world/entity/player/Player;canInteractWithBlock(Lnet/minecraft/core/BlockPos;D)Z"
-        )
+        ),
+        require = 0
     )
     private static boolean wrapDistanceToSqr(
         Player player, BlockPos blockPos, double distance,

@@ -159,12 +159,35 @@ Baseline indicative : environ 105 erreurs.
 
 ### 2.3 Entités, rendu simple et enregistrement
 
+Statut : termine le 11 juin 2026.
+
+- compilation complete apres Phase 2.3 : 440 erreurs
+- baisse depuis Phase 2.2 : 484 -> 440 (-44)
+- erreurs `EntityRenderer` ciblees restantes : 0
+- erreurs `EntityType` ciblees restantes : 0
+- erreurs de rendu simple ciblees restantes : 0
+- nouvelles erreurs introduites : 0
+- overlays/debug de `PortalEntityRenderer` dependants de l'ancien buffer reportes
+  avec le pipeline de rendu
+- framebuffers, shaders, Sodium, Iris, worldgen lourd et DimLib non modifies
+
 - nouvelles génériques `EntityRenderer<E, S>`
 - création et enregistrement des `EntityType`
 - états de rendu d'entité
 - écrans et renderers simples ne dépendant pas des shaders de portail
 
 ### 2.4 Réseau et payloads
+
+Statut : termine le 11 juin 2026.
+
+- compilation complete apres Phase 2.4 : 399 erreurs
+- baisse depuis Phase 2.3 : 440 -> 399 (-41)
+- erreurs payload Fabric ciblees restantes : 0
+- erreurs networking ciblees restantes : 0
+- erreurs synchronisation chunk / entite ciblees restantes : 0
+- nouvelles erreurs introduites : 0
+- RenderPipeline, shaders, Sodium, Iris, worldgen lourd, DimLib et
+  `AlternateDimensions` non modifies
 
 - payloads Fabric
 - codecs réseau
@@ -175,11 +198,42 @@ Baseline indicative : environ 55 erreurs.
 
 ### 2.5 Worldgen et API périphériques
 
+Statut : termine le 11 juin 2026.
+
+- compilation complete apres Phase 2.5 : 361 erreurs
+- baisse depuis Phase 2.4 : 399 -> 361 (-38)
+- erreurs worldgen ciblees restantes : 0
+- erreurs DimLib / `AlternateDimensions` restantes : 15
+- erreurs registres / dimensions natives restantes : 0
+- nouvelles erreurs introduites : 0
+- les 15 erreurs restantes du perimetre viennent du binaire DimLib 1.21.1 ;
+  aucune version DimLib compatible Minecraft 26.1 n'est publiee
+
 - `ChunkGenerator`
 - carving
 - listes pondérées
 - biome et génération de dimensions
 - API Fabric restantes
+
+### 2.6 Nettoyage Minecraft général restant
+
+Statut : termine le 11 juin 2026.
+
+- compilation complete apres Phase 2.6 : 297 erreurs
+- baisse depuis Phase 2.5 : 361 -> 297 (-64)
+- jalon sous 300 erreurs atteint
+- erreurs `PortalCommand` / `PortalDebugCommands` ciblees restantes : 0
+- erreurs `Mesh2D` ciblees restantes : 0
+- erreurs `GravityChangerInterface` / `IPPortingLibCompat` restantes : 0
+- erreurs `ServerTeleportationManager` restantes : 1, causee par DimLib 1.21.1
+- erreurs `ClientWorldLoader` restantes : 2, dont 1 DimLib et 1 construction
+  du nouveau `LevelRenderer`
+- erreurs DimLib restantes : 15
+- erreurs de rendu pur identifiees : 177
+- nouvelles erreurs introduites : 0
+
+Gravity Changer est temporairement no-op tant qu'aucune API compatible Minecraft
+26.1 n'est disponible. L'ecran Cloth Config retourne temporairement son parent.
 
 Critère de sortie global de la phase 2 :
 
@@ -211,6 +265,228 @@ Baseline indicative :
 - environ 103 erreurs directement liées à l'ancien pipeline ;
 - `MyRenderHelper.java` est actuellement le fichier le plus touché avec environ
   59 diagnostics.
+
+### 3.1 Préparation du pipeline de rendu vanilla
+
+Statut : terminé le 11 juin 2026.
+
+- compilation complète après Phase 3.1 : 268 erreurs
+- baisse depuis Phase 2.6 : 297 -> 268 (-29)
+- erreurs de rendu pur identifiées : 148
+- diagnostics `ShaderInstance` : 29 -> 23
+- diagnostics `Program` : 7 -> 0
+- diagnostics `BufferUploader` : 7 -> 7
+- diagnostics simples `RenderTarget` / `TextureTarget` / `ON_OSX` : 29 -> 16
+- nouvelles erreurs introduites : 0
+- `processResources` validé ; les quatre mixins shader obsolètes sont absentes
+  du profil vanilla généré
+
+Les anciens mixins `MixinProgram`, `MixinShaderInstance`,
+`MixinGameRenderer_Shaders` et `MixinRenderSystem_Clipping` sont temporairement
+isolés dans le profil vanilla. `IPRenderPipelines` fournit le point d'ancrage
+minimal pour enregistrer les futurs `RenderPipeline` et préparer un
+`RenderPass`, sans porter tout `MyRenderHelper` en une seule passe.
+
+Inventaire principal du rendu restant :
+
+- `MyRenderHelper.java` : 59 diagnostics
+- `MyGameRenderer.java` : 18 diagnostics
+- `ViewAreaRenderer.java` : 10 diagnostics
+- `FrontClipping.java` : 8 diagnostics
+- `RendererUsingStencil.java` : 7 diagnostics
+- `RendererUsingFrameBuffer.java` : 7 diagnostics
+
+### 3.2 MyRenderHelper et BufferUploader
+
+Statut : terminé le 12 juin 2026.
+
+- compilation complète après Phase 3.2 : 203 erreurs
+- baisse depuis Phase 3.1 : 268 -> 203 (-65)
+- erreurs de rendu pur identifiées : 83
+- diagnostics `MyRenderHelper.java` : 59 -> 0
+- diagnostics `BufferUploader` : 7 -> 0
+- dépendances directes `ShaderInstance` dans `MyRenderHelper` : 0
+- nouvelles erreurs introduites : 0
+
+`IPRenderPipelines` fournit maintenant un chemin de dessin minimal :
+
+- construction de géométrie avec `BufferBuilder` / `MeshData`
+- upload immédiat vers `GpuBuffer`
+- création d'un `RenderPass`
+- liaison du `RenderPipeline`, des uniformes et des buffers
+- dessin indexé ou non indexé selon le `MeshData`
+
+Le dessin simple `renderScreenTriangle` utilise ce chemin. Les anciens shaders
+avancés de framebuffer et de zone de portail restent temporairement no-op.
+`ViewAreaRenderer` n'a reçu que l'adaptation minimale nécessaire pour envoyer
+son `MeshData` vers `IPRenderPipelines`, sans commencer son port complet.
+
+### 3.3 Renderers avancés, framebuffers et stencil
+
+Statut : terminé le 12 juin 2026.
+
+- compilation complète après Phase 3.3 : 179 erreurs
+- baisse depuis Phase 3.2 : 203 -> 179 (-24)
+- erreurs de rendu pur identifiées : 59
+- erreurs `RendererUsingStencil` restantes : 0
+- erreurs `RendererUsingFrameBuffer` restantes : 0
+- erreurs `RendererDebug` / `PortalRenderer` restantes : 0
+- erreurs `SecondaryFrameBuffer` restantes : 0
+- erreurs `GuiPortalRendering` framebuffer restantes : 0
+- diagnostics `RenderTarget` / `RenderSystem` pertinents restants : 9
+- nouvelles erreurs introduites : 0
+
+`IPRenderPipelines` centralise maintenant le nettoyage couleur/profondeur des
+`RenderTarget` via `CommandEncoder`. Les anciens `bindWrite`, `checkStatus`,
+`ON_OSX`, `_clearColor`, `_clearDepth` et appels globaux de profondeur ont été
+retirés des renderers ciblés.
+
+Les effets stencil et framebuffer avancés restent partiellement dégradés tant
+que leurs états complets ne sont pas exprimés dans des `RenderPipeline`.
+Les diagnostics `RenderSystem` restants appartiennent uniquement aux zones
+reportées : `MyGameRenderer`, `FrontClipping`, `MixinGameRenderer` et
+`MixinLevelRenderer`.
+
+### 3.4 FrontClipping et MyGameRenderer léger
+
+Statut : terminé le 12 juin 2026.
+
+- compilation complète après Phase 3.4 : 152 erreurs
+- baisse depuis Phase 3.3 : 179 -> 152 (-27)
+- erreurs `FrontClipping` restantes : 0
+- erreurs `MyGameRenderer` restantes : 0
+- erreurs `MixinGameRenderer` restantes : 0
+- diagnostics `RenderSystem` restants : 1, dans `MixinLevelRenderer`
+- nouvelles erreurs introduites : 0
+
+Les accès directs à `ShaderInstance` et aux anciens uniformes de clipping ont
+été retirés de `FrontClipping`. L'état du plan de clipping reste calculé, mais
+son envoi aux shaders est temporairement no-op jusqu'à son branchement sur les
+nouveaux `RenderPipeline`.
+
+`MyGameRenderer` conserve la structure de changement et de restauration du
+monde rendu. L'appel récursif à `LevelRenderer`, ainsi que la restauration du
+fog et de l'éclairage, sont temporairement no-op car ils dépendent du port lourd
+du nouveau pipeline. L'ancien redirect de projection de `MixinGameRenderer`,
+ciblant une méthode supprimée, a été retiré.
+
+### 3.5 LevelRenderer et ViewArea minimal
+
+Statut : terminé le 12 juin 2026.
+
+- compilation complète après Phase 3.5 : 133 erreurs
+- baisse depuis Phase 3.4 : 152 -> 133 (-19)
+- erreurs `MixinLevelRenderer` restantes : 0
+- erreurs `ImmPtlViewArea` restantes : 0
+- erreurs `ViewAreaRenderer` restantes : 0
+- erreurs clouds / optional restantes : 0
+- erreurs `WireRenderingHelper` restantes : 0
+- nouvelles erreurs introduites : 0
+
+`MixinLevelRenderer` utilise maintenant `setCameraPosition` et l'état
+`SectionMesh` pour les vérifications minimales. L'ancien hook global
+`RenderSystem.clear` a été retiré, le nettoyage étant désormais géré par le
+pipeline 26.1.
+
+`ImmPtlViewArea` utilise le constructeur `RenderSection(int, long)`, les nœuds
+`SectionPos` et le reset contrôlé des sections. `ViewAreaRenderer` laisse les
+masques de couleur aux `RenderPipeline`. Le rendu de boîte de
+`WireRenderingHelper` est produit localement avec douze segments.
+
+Les mixins `MixinLevelRenderer_Optional` et `MixinLevelRenderer_Clouds` sont
+temporairement exclus du profil vanilla. Le tri translucide spécial et
+l'optimisation des clouds seront réactivés après stabilisation du pipeline de
+niveau.
+
+### 3.6 Rendu contextuel, caméra, fog et transformations
+
+Statut : terminé le 12 juin 2026.
+
+- compilation complète après Phase 3.6 : 120 erreurs
+- baisse depuis Phase 3.5 : 133 -> 120 (-13)
+- erreurs `FogRendererContext` restantes : 0
+- erreurs `CrossPortalViewRendering` restantes : 0
+- erreurs `TransformationManager` restantes : 0
+- erreurs `VisibleSectionDiscovery` restantes : 0
+- erreurs de rendu ciblées restantes : 0
+- nouvelles erreurs introduites : 0
+
+Les accès directs à `Minecraft.cameraEntity` utilisent maintenant
+`getCameraEntity()`. Le fog contextuel conserve la couleur mémorisée, mais son
+recalcul avancé est temporairement no-op. La caméra cross-portal et la mise à
+jour manuelle de caméra sont également no-op jusqu'au branchement sur l'état de
+caméra extrait par le renderer 26.1.
+
+`VisibleSectionDiscovery` utilise désormais `RenderSection.getSectionNode()` et
+`SectionPos.x/y/z`. La collision entre le type de configuration local et
+`com.mojang.blaze3d.shaders.ShaderType` a été corrigée. L'ancien hook
+`Camera.setup` de `MixinCamera` a été retiré.
+
+### 4.0 Migration finale des API Minecraft 26.1
+
+Statut : terminé le 12 juin 2026.
+
+- compilation complète après Phase 4.0 : 48 erreurs
+- baisse depuis Phase 3.6 : 120 -> 48 (-72)
+- erreurs NBT restantes : 16
+- erreurs helper restantes : 0
+- erreurs UI restantes : 0
+- erreurs gameplay restantes : 17
+- nouvelles erreurs introduites : 0
+
+Les neuf cibles prioritaires (`IPMcHelper`, `McHelper`,
+`MyNbtTextFormatter`, `PortalPlaceholderBlock`, `IPortalInitialScreen`,
+`ScaleUtils`, `CommandStickItem`, `PortalHelperItem` et
+`PortalWandInteraction`) ne produisent plus aucun diagnostic.
+
+Les migrations couvrent notamment `Level.isClientSide()`, les nouveaux
+`ClickEvent`, les messages système, les signatures de tooltip et
+`Block.updateShape`, ainsi que les accès NBT optionnels ciblés. Les principaux
+blocs restants sont `AlternateDimensions`, `GlobalPortalStorage`, les
+gestionnaires de téléportation exclus et quelques classes client du portal
+wand.
+
+### 4.1 Finalisation hors DimLib
+
+Statut : terminé le 12 juin 2026.
+
+- compilation complète après Phase 4.1 : 16 erreurs
+- baisse depuis Phase 4.0 : 48 -> 16 (-32)
+- erreurs NBT restantes : 0
+- erreurs gameplay restantes : 0
+- erreurs wand restantes : 0
+- erreurs DimLib / DimensionAPI restantes : 15
+- nouvelles erreurs introduites : 0
+
+Les dix cibles prioritaires sont à zéro diagnostic hors hook DimensionAPI de
+`GlobalPortalStorage`, volontairement conservé. Le stockage global utilise
+maintenant `SavedDataType`, un codec NBT et `TagValueInput` / `TagValueOutput`.
+Les render types du wand utilisent `RenderTypes.lines()`.
+
+Les 16 diagnostics restants sont composés de 15 erreurs DimLib / DimensionAPI
+et du constructeur `LevelRenderer` de `ClientWorldLoader`, tous explicitement
+exclus de cette phase.
+
+### 4.2 Isolation DimLib et dernier LevelRenderer
+
+Statut : terminé le 12 juin 2026.
+
+- compilation complète après Phase 4.2 : 0 erreur
+- baisse depuis Phase 4.1 : 16 -> 0 (-16)
+- erreurs DimLib / DimensionAPI restantes : 0
+- erreurs `LevelRenderer` restantes : 0
+- nouvelles erreurs introduites : 0
+- `compileJava` vanilla : réussi
+
+Les abonnements DimensionAPI de `ClientWorldLoader`,
+`ServerTeleportationManager`, `GlobalPortalStorage` et `DimensionIntId` sont
+temporairement désactivés. `AlternateDimensions` conserve ses clés et
+générateurs comme façade vanilla, mais n'enregistre plus de dimensions
+dynamiques ni de templates DimLib.
+
+La création du renderer secondaire de `ClientWorldLoader` réutilise
+temporairement le renderer principal. Ce chemin est inactif tant que les
+dimensions dynamiques DimLib sont isolées.
 
 Critères de sortie :
 
@@ -252,6 +528,5 @@ Critères de sortie :
 
 ## Prochaine action autorisée
 
-Préparer la prochaine sous-phase Minecraft générale sans commencer `RenderPipeline`,
-`ShaderInstance`, `Program`, `BufferUploader`, Sodium, Iris ou le worldgen lourd.
-Conserver DimLib / `AlternateDimensions` pour la phase 2.5.
+Tester le lancement du client vanilla et stabiliser le comportement minimal
+des portails avant toute réactivation de Sodium, Iris ou DimLib.

@@ -20,6 +20,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
@@ -203,7 +204,7 @@ public class ImmPtlNetworking {
             }
             else {
                 // spawn new portal
-                Entity entity = entityType.create(world);
+                Entity entity = entityType.create(world, EntitySpawnReason.LOAD);
                 Validate.notNull(entity, "Entity type is null");
                 
                 if (!(entity instanceof Portal portal)) {
@@ -214,7 +215,7 @@ public class ImmPtlNetworking {
                 entity.setId(id);
                 entity.setUUID(uuid);
                 entity.syncPacketPositionCodec(x, y, z);
-                entity.moveTo(x, y, z);
+                entity.snapTo(x, y, z, entity.getYRot(), entity.getXRot());
                 
                 portal.readPortalDataFromNbt(extraData);
                 
@@ -236,15 +237,15 @@ public class ImmPtlNetworking {
     }
     
     public static void init() {
-        PayloadTypeRegistry.playC2S().register(
+        PayloadTypeRegistry.serverboundPlay().register(
             TeleportPacket.TYPE, TeleportPacket.CODEC
         );
         
-        PayloadTypeRegistry.playS2C().register(
+        PayloadTypeRegistry.clientboundPlay().register(
             GlobalPortalSyncPacket.TYPE, GlobalPortalSyncPacket.CODEC
         );
         
-        PayloadTypeRegistry.playS2C().register(
+        PayloadTypeRegistry.clientboundPlay().register(
             PortalSyncPacket.TYPE, PortalSyncPacket.CODEC
         );
         

@@ -212,7 +212,7 @@ public abstract class MixinServerGamePacketListenerImpl implements IEServerPlayN
         }
         
         this.awaitingTeleportTime = this.tickCount;
-        this.player.absMoveTo(
+        this.player.absSnapTo(
             absoluteChange.position().x,
             absoluteChange.position().y,
             absoluteChange.position().z,
@@ -223,7 +223,8 @@ public abstract class MixinServerGamePacketListenerImpl implements IEServerPlayN
             this.awaitingTeleport, change, relativeAttrs
         );
         
-        ((IEPlayerPositionLookS2CPacket) lookPacket).ip_setPlayerDimension(player.level().dimension());
+        ((IEPlayerPositionLookS2CPacket) (Object) lookPacket)
+            .ip_setPlayerDimension(player.level().dimension());
         
         this.player.connection.send(lookPacket);
     }

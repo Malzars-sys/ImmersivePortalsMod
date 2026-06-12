@@ -315,11 +315,11 @@ public class ImplRemoteProcedureCall {
     }
     
     public static void init() {
-        PayloadTypeRegistry.playC2S().register(
+        PayloadTypeRegistry.serverboundPlay().register(
             C2SRPCPayload.TYPE, C2SRPCPayload.CODEC
         );
         
-        PayloadTypeRegistry.playS2C().register(
+        PayloadTypeRegistry.clientboundPlay().register(
             S2CRPCPayload.TYPE, S2CRPCPayload.CODEC
         );
         
@@ -387,7 +387,7 @@ public class ImplRemoteProcedureCall {
         String methodPath,
         Object... arguments
     ) {
-        return ClientPlayNetworking.createC2SPacket(
+        return ClientPlayNetworking.createServerboundPacket(
             new C2SRPCPayload(
                 true, methodPath, null, List.of(arguments)
             )
@@ -398,7 +398,7 @@ public class ImplRemoteProcedureCall {
         String methodPath,
         Object... arguments
     ) {
-        return ServerPlayNetworking.createS2CPacket(
+        return ServerPlayNetworking.createClientboundPacket(
             new S2CRPCPayload(
                 true, methodPath, null, List.of(arguments)
             )

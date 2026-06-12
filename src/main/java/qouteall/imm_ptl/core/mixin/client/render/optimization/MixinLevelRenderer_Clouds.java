@@ -77,7 +77,7 @@ public abstract class MixinLevelRenderer_Clouds {
     }
     
     private void portal_yieldCloudContext(CloudContext context) {
-        Vec3 cloudsColor = this.level.getCloudColor(RenderStates.getPartialTick());
+        Vec3 cloudsColor = Vec3.ZERO;
         
         context.lastCloudsBlockX = prevCloudX;
         context.lastCloudsBlockY = prevCloudY;
@@ -108,7 +108,7 @@ public abstract class MixinLevelRenderer_Clouds {
     private void portal_onBeginCloudRendering(
         float partialTick, double cameraX, double cameraY, double cameraZ
     ) {
-        float f = this.level.effects().getCloudHeight();
+        float f = 0.0F;
         float g = 12.0F;
         float h = 4.0F;
         double d = 2.0E-4D;
@@ -121,7 +121,7 @@ public abstract class MixinLevelRenderer_Clouds {
         float l = (float) (i - (double) Mth.floor(i));
         float m = (float) (j / 4.0D - (double) Mth.floor(j / 4.0D)) * 4.0F;
         float n = (float) (k - (double) Mth.floor(k));
-        Vec3 cloudsColor = this.level.getCloudColor(partialTick);
+        Vec3 cloudsColor = Vec3.ZERO;
         int kx = (int) Math.floor(i);
         int ky = (int) Math.floor(j / 4.0D);
         int kz = (int) Math.floor(k);

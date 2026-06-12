@@ -27,75 +27,8 @@ public class CrossPortalViewRendering {
     
     // if rendered, return true
     public static boolean renderCrossPortalView() {
-        if (!IPGlobal.enableCrossPortalView) {
-            return false;
-        }
-        
-        Entity cameraEntity = client.cameraEntity;
-        
-        Camera camera1 = new Camera();
-        float cameraY = ((IECamera) RenderStates.originalCamera).ip_getCameraY();
-        float lastCameraY = ((IECamera) RenderStates.originalCamera).ip_getLastCameraY();
-        ((IECamera) camera1).ip_setCameraY(cameraY, lastCameraY);
-        Camera camera = camera1;
-        camera.setup(
-            client.level, cameraEntity,
-            isThirdPerson(),
-            isFrontView(),
-            RenderStates.getPartialTick()
-        );
-    
-        Vec3 realCameraPos = camera.position();
-        Vec3 isometricAdjustedOriginalCameraPos =
-            TransformationManager.getIsometricAdjustedCameraPos(camera);
-        
-        Vec3 physicalPlayerHeadPos = ClientTeleportationManager.getPlayerEyePos(RenderStates.getPartialTick());
-        
-        Pair<Portal, Vec3> portalHit = PortalCommand.raytracePortals(
-            client.level, physicalPlayerHeadPos, isometricAdjustedOriginalCameraPos, true
-        ).orElse(null);
-        
-        if (portalHit == null) {
-            return false;
-        }
-        
-        Portal portal = portalHit.getFirst();
-        Vec3 hitPos = portalHit.getSecond();
-        
-        if (!portal.canTeleportEntity(cameraEntity)) {
-            return false;
-        }
-        
-        Vec3 renderingCameraPos;
-        
-        if (isThirdPerson()) {
-            double distance = getThirdPersonMaxDistance();
-            
-            Vec3 thirdPersonPos = realCameraPos.subtract(physicalPlayerHeadPos).normalize()
-                .scale(distance).add(physicalPlayerHeadPos);
-            
-            renderingCameraPos = getThirdPersonCameraPos(thirdPersonPos, portal, hitPos);
-        }
-        else {
-            renderingCameraPos = portal.transformPoint(realCameraPos);
-        }
-        
-        ((IECamera) RenderStates.originalCamera).portal_setPos(renderingCameraPos);
-        
-        WorldRenderInfo worldRenderInfo = new WorldRenderInfo.Builder()
-            .setWorld(ClientWorldLoader.getWorld(portal.getDestDim()))
-            .setCameraPos(renderingCameraPos)
-            .setCameraTransformation(portal.getAdditionalCameraTransformation())
-            .setOverwriteCameraTransformation(false)
-            .setDescription(null)
-            .setRenderDistance(client.options.getEffectiveRenderDistance())
-            .setDoRenderHand(false)
-            .setEnableViewBobbing(false)
-            .build();
-        
-        IPCGlobal.renderer.invokeWorldRendering(worldRenderInfo);
-        
-        return true;
+        // Deferred until the 26.1 extracted camera render state can be rebuilt.
+        return false;
     }
     
     private static boolean isFrontView() {
@@ -113,14 +46,15 @@ public class CrossPortalViewRendering {
     private static Vec3 getThirdPersonCameraPos(Vec3 endPos, Portal portal, Vec3 startPos) {
         Vec3 rtStart = portal.transformPoint(startPos);
         Vec3 rtEnd = portal.transformPoint(endPos);
-        assert client.cameraEntity != null;
+        Entity cameraEntity = client.getCameraEntity();
+        assert cameraEntity != null;
         BlockHitResult blockHitResult = portal.getDestinationWorld().clip(
             new ClipContext(
                 rtStart,
                 rtEnd,
                 ClipContext.Block.VISUAL,
                 ClipContext.Fluid.NONE,
-                client.cameraEntity
+                cameraEntity
             )
         );
         

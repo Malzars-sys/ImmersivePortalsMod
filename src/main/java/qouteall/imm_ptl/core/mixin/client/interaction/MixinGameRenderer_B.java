@@ -13,7 +13,12 @@ import qouteall.imm_ptl.core.render.context_management.WorldRenderInfo;
 public class MixinGameRenderer_B {
     
     //do not update target when rendering portal
-    @Inject(method = "Lnet/minecraft/client/renderer/GameRenderer;pick(F)V", at = @At("HEAD"), cancellable = true)
+    @Inject(
+        method = "Lnet/minecraft/client/renderer/GameRenderer;pick(F)V",
+        at = @At("HEAD"),
+        cancellable = true,
+        require = 0
+    )
     private void onUpdateTargetedEntity(float partialTick, CallbackInfo ci) {
         if (Minecraft.getInstance().level != null) {
             if (WorldRenderInfo.isRendering()) {
@@ -22,7 +27,11 @@ public class MixinGameRenderer_B {
         }
     }
     
-    @Inject(method = "Lnet/minecraft/client/renderer/GameRenderer;pick(F)V", at = @At("RETURN"))
+    @Inject(
+        method = "Lnet/minecraft/client/renderer/GameRenderer;pick(F)V",
+        at = @At("RETURN"),
+        require = 0
+    )
     private void onUpdateTargetedEntityFinish(float partialTick, CallbackInfo ci) {
         if (Minecraft.getInstance().level != null) {
             BlockManipulationClient.updatePointedBlock(partialTick);

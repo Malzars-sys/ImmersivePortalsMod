@@ -110,14 +110,14 @@ public class DimIntIdMap {
     }
     
     public static DimIntIdMap fromTag(CompoundTag tag) {
-        CompoundTag intids = tag.getCompound("intids");
+        CompoundTag intids = tag.getCompound("intids").orElseGet(CompoundTag::new);
         
         Object2IntOpenHashMap<ResourceKey<Level>> toIntegerId = new Object2IntOpenHashMap<>();
         Int2ObjectOpenHashMap<ResourceKey<Level>> fromIntegerId = new Int2ObjectOpenHashMap<>();
         
-        intids.getAllKeys().forEach(dim -> {
+        intids.keySet().forEach(dim -> {
             if (intids.contains(dim)) {
-                int intid = intids.getInt(dim);
+                int intid = intids.getInt(dim).orElseThrow();
                 ResourceKey<Level> dimId = Helper.dimIdToKey(dim);
                 toIntegerId.put(dimId, intid);
                 fromIntegerId.put(intid, dimId);

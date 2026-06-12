@@ -22,7 +22,7 @@ public abstract class MixinContainerOpenersCounter {
     
     // the container could be opened via portal. the player could be anywhere in any dimension
     // check all players
-    @Inject(method = "getPlayersWithContainerOpen", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "getPlayersWithContainerOpen", at = @At("HEAD"), cancellable = true, require = 0)
     private void getOpenCount(Level level, BlockPos pos, CallbackInfoReturnable<List<Player>> cir) {
         List<Player> list = new ArrayList<>();
         

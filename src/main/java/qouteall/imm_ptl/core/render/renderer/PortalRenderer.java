@@ -84,7 +84,7 @@ public abstract class PortalRenderer {
         Supplier<Frustum> frustumSupplier = Helper.cached(() -> {
             Frustum frustum = new Frustum(
                 modelView,
-                RenderSystem.getProjectionMatrix()
+                getProjectionMatrix()
             );
             
             Vec3 cameraPos = client.gameRenderer.getMainCamera().position();
@@ -117,6 +117,12 @@ public abstract class PortalRenderer {
             e -> e.getDistanceToNearestPointInPortal(cameraPos)
         ));
         return renderables;
+    }
+
+    protected static Matrix4f getProjectionMatrix() {
+        return RenderStates.basicProjectionMatrix != null
+            ? new Matrix4f(RenderStates.basicProjectionMatrix)
+            : new Matrix4f();
     }
     
     private static boolean shouldSkipRenderingPortal(Portal portal, Supplier<Frustum> frustumSupplier) {

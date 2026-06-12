@@ -3,7 +3,6 @@ package qouteall.imm_ptl.core.platform_specific;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.EntityType;
 import qouteall.imm_ptl.core.CHelper;
@@ -26,31 +25,20 @@ import qouteall.imm_ptl.core.render.PortalEntityRenderer;
 import qouteall.q_misc_util.Helper;
 import qouteall.q_misc_util.my_util.MyTaskList;
 
-import java.util.Arrays;
-
 public class IPModEntryClient implements ClientModInitializer {
     
     
     
-    @SuppressWarnings({"rawtypes", "unchecked"})
     public static void initPortalRenderers() {
-        
-        Arrays.stream(new EntityType<?>[]{
-            Portal.ENTITY_TYPE,
-            NetherPortalEntity.ENTITY_TYPE,
-            EndPortalEntity.ENTITY_TYPE,
-            Mirror.ENTITY_TYPE,
-            BreakableMirror.ENTITY_TYPE,
-            GlobalTrackedPortal.ENTITY_TYPE,
-            WorldWrappingPortal.ENTITY_TYPE,
-            VerticalConnectingPortal.ENTITY_TYPE,
-            GeneralBreakablePortal.ENTITY_TYPE
-        }).forEach(
-            entityType -> EntityRendererRegistry.register(
-                entityType,
-                (EntityRendererProvider) PortalEntityRenderer::new
-            )
-        );
+        EntityRendererRegistry.register(Portal.ENTITY_TYPE, PortalEntityRenderer::new);
+        EntityRendererRegistry.register(NetherPortalEntity.ENTITY_TYPE, PortalEntityRenderer::new);
+        EntityRendererRegistry.register(EndPortalEntity.ENTITY_TYPE, PortalEntityRenderer::new);
+        EntityRendererRegistry.register(Mirror.ENTITY_TYPE, PortalEntityRenderer::new);
+        EntityRendererRegistry.register(BreakableMirror.ENTITY_TYPE, PortalEntityRenderer::new);
+        EntityRendererRegistry.register(GlobalTrackedPortal.ENTITY_TYPE, PortalEntityRenderer::new);
+        EntityRendererRegistry.register(WorldWrappingPortal.ENTITY_TYPE, PortalEntityRenderer::new);
+        EntityRendererRegistry.register(VerticalConnectingPortal.ENTITY_TYPE, PortalEntityRenderer::new);
+        EntityRendererRegistry.register(GeneralBreakablePortal.ENTITY_TYPE, PortalEntityRenderer::new);
         
         EntityRendererRegistry.register(
             LoadingIndicatorEntity.entityType,

@@ -28,10 +28,10 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import qouteall.dimlib.api.DimensionAPI;
 import qouteall.imm_ptl.core.ducks.IECamera;
 import qouteall.imm_ptl.core.ducks.IEClientPlayNetworkHandler;
 import qouteall.imm_ptl.core.ducks.IEClientWorld;
+import qouteall.imm_ptl.core.ducks.IEGameRenderer;
 import qouteall.imm_ptl.core.ducks.IEMinecraftClient;
 import qouteall.imm_ptl.core.ducks.IEParticleManager;
 import qouteall.imm_ptl.core.ducks.IEWorld;
@@ -84,19 +84,6 @@ public class ClientWorldLoader {
     private static boolean isWorldSwitched = false;
     
     public static void init() {
-        DimensionAPI.CLIENT_DIMENSION_UPDATE_EVENT.register((serverDimensions) -> {
-            if (getIsInitialized()) {
-                List<ResourceKey<Level>> dimensionsToRemove =
-                    CLIENT_WORLD_MAP.keySet().stream()
-                        .filter(dim -> !serverDimensions.contains(dim)).toList();
-                
-                for (ResourceKey<Level> dim : dimensionsToRemove) {
-                    disposeDimensionDynamically(dim);
-                }
-                
-            }
-        });
-        
         IPCGlobal.CLIENT_EXIT_EVENT.register(() -> {
             dimIdToDimTypeId = null;
         });
@@ -120,7 +107,7 @@ public class ClientWorldLoader {
             });
             WORLD_RENDERER_MAP.values().forEach(worldRenderer -> {
                 if (worldRenderer != CLIENT.levelRenderer) {
-                    worldRenderer.tick();
+                    worldRenderer.tick(CLIENT.gameRenderer.getMainCamera());
                 }
             });
             isClientRemoteTicking = false;
@@ -403,12 +390,8 @@ public class ClientWorldLoader {
         
         int chunkLoadDistance = 3; // my own chunk manager doesn't need it
         
-        LevelRenderer worldRenderer = new LevelRenderer(
-            CLIENT,
-            CLIENT.getEntityRenderDispatcher(),
-            CLIENT.getBlockEntityRenderDispatcher(),
-            CLIENT.renderBuffers()
-        );
+        // Secondary dimensions are disabled in the vanilla profile while DimLib is isolated.
+        LevelRenderer worldRenderer = CLIENT.levelRenderer;
         
         ClientLevel newWorld;
         try {
@@ -434,8 +417,8 @@ public class ClientWorldLoader {
             int simulationDistance = CLIENT.level.getServerSimulationDistance();
             
             Holder<DimensionType> dimensionType = registryManager
-                .registryOrThrow(Registries.DIMENSION_TYPE)
-                .getHolderOrThrow(dimensionTypeKey);
+                .lookupOrThrow(Registries.DIMENSION_TYPE)
+                .getOrThrow(dimensionTypeKey);
             
             // currently use a separated level data object
             // day time is not shared between worlds
@@ -615,13 +598,13 @@ public class ClientWorldLoader {
             LocalPlayer player = Minecraft.getInstance().player;
             assert player != null;
             RegistryAccess registryAccess = player.connection.registryAccess();
-            Registry<Biome> biomes = registryAccess.registryOrThrow(Registries.BIOME);
+            Registry<Biome> biomes = registryAccess.lookupOrThrow(Registries.BIOME);
             
             for (Map.Entry<String, Integer> entry : idMap.entrySet()) {
                 Identifier id = McHelper.newIdentifier(entry.getKey());
                 int expectedId = entry.getValue();
                 
-                if (biomes.getId(biomes.get(id)) != expectedId) {
+                if (biomes.getId(biomes.getValue(id)) != expectedId) {
                     LOGGER.error("Biome id mismatch: {} {}", id, expectedId);
                 }
             }

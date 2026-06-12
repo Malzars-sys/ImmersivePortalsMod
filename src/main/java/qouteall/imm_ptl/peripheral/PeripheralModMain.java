@@ -5,6 +5,8 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
@@ -13,14 +15,12 @@ import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.chunk.ChunkGenerator;
-import qouteall.dimlib.api.DimensionAPI;
 import qouteall.imm_ptl.core.McHelper;
 import qouteall.imm_ptl.peripheral.alternate_dimension.AlternateDimensions;
 import qouteall.imm_ptl.peripheral.alternate_dimension.ChaosBiomeSource;
 import qouteall.imm_ptl.peripheral.alternate_dimension.ErrorTerrainGenerator;
 import qouteall.imm_ptl.peripheral.alternate_dimension.FormulaGenerator;
 import qouteall.imm_ptl.peripheral.alternate_dimension.NormalSkylandGenerator;
-import qouteall.imm_ptl.peripheral.dim_stack.DimStackManagement;
 import qouteall.imm_ptl.peripheral.portal_generation.IntrinsicPortalGeneration;
 import qouteall.imm_ptl.peripheral.wand.ClientPortalWandPortalDrag;
 import qouteall.imm_ptl.peripheral.wand.PortalWandInteraction;
@@ -31,10 +31,22 @@ import java.util.function.BiConsumer;
 public class PeripheralModMain {
     
     public static final Block portalHelperBlock =
-        new Block(BlockBehaviour.Properties.of().noOcclusion().isRedstoneConductor((a, b, c) -> false));
+        new Block(BlockBehaviour.Properties.of()
+            .setId(ResourceKey.create(
+                Registries.BLOCK,
+                McHelper.newIdentifier("immersive_portals", "portal_helper")
+            ))
+            .noOcclusion()
+            .isRedstoneConductor((a, b, c) -> false));
     
     public static final BlockItem portalHelperBlockItem =
-        new PortalHelperItem(PeripheralModMain.portalHelperBlock, new Item.Properties());
+        new PortalHelperItem(
+            PeripheralModMain.portalHelperBlock,
+            new Item.Properties().setId(ResourceKey.create(
+                Registries.ITEM,
+                McHelper.newIdentifier("immersive_portals", "portal_helper")
+            ))
+        );
     
     public static final CreativeModeTab TAB =
         CreativeModeTab.builder(CreativeModeTab.Row.TOP, 0)
@@ -63,11 +75,7 @@ public class PeripheralModMain {
         
         IntrinsicPortalGeneration.init();
         
-        DimStackManagement.init();
-        
         AlternateDimensions.init();
-        
-        DimensionAPI.suppressExperimentalWarningForNamespace("immersive_portals");
         
         PortalWandItem.init();
         

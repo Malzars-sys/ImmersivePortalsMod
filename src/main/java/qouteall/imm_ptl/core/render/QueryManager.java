@@ -1,11 +1,15 @@
 package qouteall.imm_ptl.core.render;
 
-import net.minecraft.client.Minecraft;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL33;
 import qouteall.imm_ptl.core.CHelper;
 
+import java.util.Locale;
+
 public class QueryManager {
+    private static final boolean IS_MAC_OS =
+        System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("mac");
+
     public static int queryStallCounter = 0;
     
     public static boolean isQuerying = false;
@@ -18,7 +22,7 @@ public class QueryManager {
         }
         
         //mac does not support GL_ANY_SAMPLES_PASSED
-        if (Minecraft.ON_OSX) {
+        if (IS_MAC_OS) {
             return renderAndGetSampleCountPassed(renderingFunc) > 0;
         }
         

@@ -60,7 +60,7 @@ public abstract class BreakablePortalEntity extends Portal {
     
     @Override
     public boolean isPortalValid() {
-        if (level().isClientSide) {
+        if (level().isClientSide()) {
             return super.isPortalValid();
         }
         return super.isPortalValid() && blockPortalShape != null && reversePortalId != null;
@@ -177,7 +177,7 @@ public abstract class BreakablePortalEntity extends Portal {
     }
     
     private void checkPortalIntegrity() {
-        Validate.isTrue(!level().isClientSide);
+        Validate.isTrue(!level().isClientSide());
         
         if (!isPortalValid()) {
             remove(RemovalReason.KILLED);

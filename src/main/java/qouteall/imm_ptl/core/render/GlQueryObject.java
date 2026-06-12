@@ -1,13 +1,16 @@
 package qouteall.imm_ptl.core.render;
 
-import net.minecraft.client.Minecraft;
 import org.apache.commons.lang3.Validate;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL33;
 
 import java.util.ArrayList;
+import java.util.Locale;
 
 public class GlQueryObject {
+    private static final boolean IS_MAC_OS =
+        System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("mac");
+
     private int idQueryObject = -1;
     private boolean isQuerying = false;
     private boolean hasResult = false;
@@ -18,7 +21,7 @@ public class GlQueryObject {
     
     public void performQueryAnySamplePassed(Runnable renderingFunc) {
         // mac does not support any samples passed query
-        if (Minecraft.ON_OSX) {
+        if (IS_MAC_OS) {
             performQuerySampleNumPassed(renderingFunc);
             return;
         }

@@ -2,15 +2,12 @@ package qouteall.imm_ptl.core.render;
 
 import net.minecraft.util.profiling.Profiler;
 
-import com.mojang.blaze3d.platform.Lighting;
-import com.mojang.blaze3d.systems.RenderSystem;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.renderer.fog.FogRenderer;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.Lightmap;
 import net.minecraft.client.renderer.PostChain;
@@ -19,7 +16,6 @@ import net.minecraft.client.renderer.SectionBufferBuilderPack;
 import net.minecraft.client.renderer.chunk.SectionRenderDispatcher;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.util.Mth;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
@@ -160,7 +156,9 @@ public class MyGameRenderer {
         
         // the projection matrix contains view bobbing.
         // the view bobbing is related with scale
-        Matrix4f oldProjectionMatrix = RenderSystem.getProjectionMatrix();
+        Matrix4f oldProjectionMatrix = RenderStates.basicProjectionMatrix == null
+            ? new Matrix4f()
+            : new Matrix4f(RenderStates.basicProjectionMatrix);
         Matrix4fStack oldModelViewStack = IERenderSystem.ip_getModelViewStack();
         
         ObjectArrayList<SectionRenderDispatcher.RenderSection> newChunkInfoList =
@@ -174,9 +172,7 @@ public class MyGameRenderer {
         client.level = newWorld;
         ieGameRenderer.ip_setLightmapTextureManager(helper.lightmapTexture);
         
-        client.getBlockEntityRenderDispatcher().level = newWorld;
         client.player.noPhysics = true;
-        client.gameRenderer.setRenderHand(doRenderHand);
         
         FogRendererContext.swappingManager.pushSwapping(newDimension);
         ((IEParticleManager) client.particleEngine).ip_setWorld(newWorld);
@@ -218,7 +214,6 @@ public class MyGameRenderer {
         ((IEWorldRenderer) worldRenderer).portal_setTransparencyShader(null);
         
         IERenderSystem.ip_setModelViewStack(new Matrix4fStack(16));
-        RenderSystem.applyModelViewMatrix();
         
         IrisInterface.invoker.setPipeline(worldRenderer, null);
         
@@ -227,9 +222,7 @@ public class MyGameRenderer {
         //invoke rendering
         invokeWrapper.accept(() -> {
             Profiler.get().push("render_portal_content");
-            client.gameRenderer.renderLevel(
-                client.getTimer()
-            );
+            // Recursive level rendering is deferred to the 26.1 LevelRenderer port.
             Profiler.get().pop();
         });
         
@@ -240,9 +233,7 @@ public class MyGameRenderer {
         ((IEMinecraftClient) client).ip_setWorldRenderer(oldWorldRenderer);
         client.level = oldWorld;
         ieGameRenderer.ip_setLightmapTextureManager(oldLightmap);
-        client.getBlockEntityRenderDispatcher().level = oldWorld;
         client.player.noPhysics = oldNoClip;
-        client.gameRenderer.setRenderHand(oldDoRenderHand);
         
         ((IEParticleManager) client.particleEngine).ip_setWorld(oldWorld);
         client.hitResult = oldCrosshairTarget;
@@ -265,15 +256,13 @@ public class MyGameRenderer {
         
         ((IEWorldRenderer) worldRenderer).portal_setFrustum(oldFrustum);
         
-        client.gameRenderer.resetProjectionMatrix(oldProjectionMatrix);
+        RenderStates.basicProjectionMatrix = oldProjectionMatrix;
         IERenderSystem.ip_setModelViewStack(oldModelViewStack);
-        RenderSystem.applyModelViewMatrix();
         
         IrisInterface.invoker.setPipeline(worldRenderer, irisPipeline);
         
         client.getEntityRenderDispatcher()
             .prepare(
-                client.level,
                 oldCamera,
                 client.crosshairPickEntity
             );
@@ -288,31 +277,11 @@ public class MyGameRenderer {
      */
     @IPVanillaCopy
     public static void resetFogState() {
-        Camera camera = client.gameRenderer.getMainCamera();
-        float g = client.gameRenderer.getRenderDistance();
-        
-        Vec3 cameraPos = camera.position();
-        double x = cameraPos.x();
-        double y = cameraPos.y();
-        double z = cameraPos.z();
-        
-        boolean isFoggy = client.level.effects().isFoggyAt(Mth.floor(x), Mth.floor(y)) ||
-            client.gui.getBossOverlay().shouldCreateWorldFog();
-        
-        FogRenderer.setupFog(
-            camera, FogRenderer.FogMode.FOG_TERRAIN, Math.max(g, 32.0F), isFoggy, RenderStates.getPartialTick()
-        );
-        FogRenderer.levelFogColor();
+        // Fog extraction and upload are owned by the 26.1 LevelRenderer pipeline.
     }
     
     public static void updateFogColor() {
-        FogRenderer.setupColor(
-            client.gameRenderer.getMainCamera(),
-            RenderStates.getPartialTick(),
-            client.level,
-            client.options.getEffectiveRenderDistance(),
-            client.gameRenderer.getDarkenWorldAmount(RenderStates.getPartialTick())
-        );
+        // Fog extraction and upload are owned by the 26.1 LevelRenderer pipeline.
     }
     
     /**
@@ -320,14 +289,7 @@ public class MyGameRenderer {
      */
     @IPVanillaCopy
     public static void resetDiffuseLighting() {
-        ClientLevel world = client.level;
-        assert world != null;
-        if (world.effects().constantAmbientLight()) {
-            Lighting.setupNetherLevel();
-        }
-        else {
-            Lighting.setupLevel();
-        }
+        // Lighting extraction and upload are owned by the 26.1 LevelRenderer pipeline.
     }
     
     

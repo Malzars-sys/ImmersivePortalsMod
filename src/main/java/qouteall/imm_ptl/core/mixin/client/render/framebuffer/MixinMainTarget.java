@@ -20,7 +20,7 @@ import static org.lwjgl.opengl.GL30.GL_FLOAT_32_UNSIGNED_INT_24_8_REV;
 public abstract class MixinMainTarget extends RenderTarget {
     
     public MixinMainTarget(boolean useDepth) {
-        super(useDepth);
+        super("imm_ptl_mixin_main_target", useDepth);
         throw new RuntimeException();
     }
     
@@ -30,7 +30,8 @@ public abstract class MixinMainTarget extends RenderTarget {
             value = "INVOKE",
             target = "Lcom/mojang/blaze3d/platform/GlStateManager;_texImage2D(IIIIIIIILjava/nio/IntBuffer;)V",
             remap = false
-        )
+        ),
+        require = 0
     )
     private void modifyTexImage2D(Args args) {
         boolean isStencilBufferEnabled = ((IEFrameBuffer) this).ip_getIsStencilBufferEnabled();
@@ -83,7 +84,8 @@ public abstract class MixinMainTarget extends RenderTarget {
             value = "INVOKE",
             target = "Lcom/mojang/blaze3d/platform/GlStateManager;_glFramebufferTexture2D(IIIII)V",
             remap = false
-        )
+        ),
+        require = 0
     )
     private void modifyFrameBufferTexture2d(Args args) {
         boolean isStencilBufferEnabled = ((IEFrameBuffer) this).ip_getIsStencilBufferEnabled();

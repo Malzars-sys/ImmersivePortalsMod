@@ -273,34 +273,6 @@ public abstract class MixinGameRenderer implements IEGameRenderer {
 //    }
     
     // make sure that the portal rendering basic projection matrix is right
-    // the basic projection matrix does not contain view bobbing
-    @Redirect(
-        method = "renderLevel",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/client/renderer/GameRenderer;getProjectionMatrix(D)Lorg/joml/Matrix4f;",
-            ordinal = 0
-        )
-    )
-    private Matrix4f redirectGetBasicProjectionMatrix(GameRenderer instance, double fov) {
-        if (PortalRendering.isRendering()) {
-            if (RenderStates.basicProjectionMatrix != null) {
-                // replace the basic projection matrix
-                // copy to avoid unwanted modification
-                return new Matrix4f(RenderStates.basicProjectionMatrix);
-            }
-            else {
-                LOGGER.error("[iPortal] Projection matrix state abnormal");
-            }
-        }
-        
-        Matrix4f result = instance.getProjectionMatrix(fov);
-        // copy to avoid unwanted modification
-        RenderStates.basicProjectionMatrix = new Matrix4f(result);
-        
-        return result;
-    }
-    
     @WrapOperation(
         method = "renderLevel",
         at = @At(

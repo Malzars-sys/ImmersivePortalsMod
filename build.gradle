@@ -92,10 +92,17 @@ dependencies {
         transitive(false)
     }
 
-    api("com.github.iPortalTeam:DimLib:${dimlib_version}") {
-        exclude(group: "net.fabricmc.fabric-api")
+    if (project.vanilla_core_compile.equals('true')) {
+        compileOnly("com.github.iPortalTeam:DimLib:${dimlib_version}") {
+            exclude(group: "net.fabricmc.fabric-api")
+        }
     }
-    include("com.github.iPortalTeam:DimLib:${dimlib_version}")
+    else {
+        api("com.github.iPortalTeam:DimLib:${dimlib_version}") {
+            exclude(group: "net.fabricmc.fabric-api")
+        }
+        include("com.github.iPortalTeam:DimLib:${dimlib_version}")
+    }
 
     // put these into inner mod to reduce duplicate MC jar
 
@@ -160,6 +167,10 @@ if (project.vanilla_core_compile.equals('true')) {
         exclude 'qouteall/imm_ptl/core/compat/sodium_compatibility/SodiumRenderingContext.java'
         exclude 'qouteall/imm_ptl/core/mixin/client/render/MixinShaderInstanceForIris.java'
         exclude 'qouteall/imm_ptl/core/mixin/client/render/MixinLevelRenderer_BeforeIris.java'
+        exclude 'qouteall/imm_ptl/core/mixin/client/render/MixinRenderSystem_Clipping.java'
+        exclude 'qouteall/imm_ptl/core/mixin/client/render/shader/MixinGameRenderer_Shaders.java'
+        exclude 'qouteall/imm_ptl/core/mixin/client/render/shader/MixinProgram.java'
+        exclude 'qouteall/imm_ptl/core/mixin/client/render/shader/MixinShaderInstance.java'
     }
 }
 
@@ -171,7 +182,10 @@ processResources {
         expand "version": project.version
         if (project.vanilla_core_compile.equals('true')) {
             filter { line ->
-                line.contains('"imm_ptl_compat.mixins.json",') ? null : line
+                if (line.contains('"imm_ptl_compat.mixins.json",')) return null
+                if (line.contains('"dimlib":')) return null
+                if (line.contains('"minecraft":')) return line.replace(',', '')
+                return line
             }
         }
     }
@@ -180,7 +194,62 @@ processResources {
         if (project.vanilla_core_compile.equals('true')) {
             filter { line ->
                 if (line.contains('"client.render.MixinLevelRenderer_BeforeIris",')) return null
+                if (line.contains('"client.render.MixinLevelRenderer",')) return null
+                if (line.contains('"client.render.MixinLevelRenderer_Optional",')) return null
+                if (line.contains('"client.render.MixinLevelRenderer_ForceMainThreadRebuild",')) return null
+                if (line.contains('"client.render.optimization.MixinLevelRenderer_Clouds",')) return null
+                if (line.contains('"client.render.optimization.MixinSectionBufferBuilderPack",')) return null
+                if (line.contains('"client.render.optimization.MixinFrustum",')) return null
+                if (line.contains('"client.render.isometric.MixinGameRenderer_Isometric",')) return null
                 if (line.contains('"client.render.MixinShaderInstanceForIris",')) return null
+                if (line.contains('"client.render.MixinRenderSystem_Clipping",')) return null
+                if (line.contains('"client.render.MixinRenderSystem_Fog",')) return null
+                if (line.contains('"client.render.MixinGlStateManager",')) return null
+                if (line.contains('"client.render.MixinGameRenderer",')) return null
+                if (line.contains('"client.render.MixinCamera",')) return null
+                if (line.contains('"client.render.MixinMultiBufferSourceBufferSource",')) return null
+                if (line.contains('"client.render.MixinScreenEffectRenderer",')) return null
+                if (line.contains('"client.render.shader.MixinGameRenderer_Shaders",')) return null
+                if (line.contains('"client.render.shader.MixinProgram",')) return null
+                if (line.contains('"client.render.shader.MixinShaderInstance",')) return null
+                if (line.contains('"client.MixinLivingEntity_C",')) return null
+                if (line.contains('"client.MixinAbstractClientPlayer",')) return null
+                if (line.contains('"client.MixinGlDebug",')) return null
+                if (line.contains('"client.MixinDebugScreenOverlay",')) return null
+                if (line.contains('"client.particle.MixinParticleEngine",')) return null
+                if (line.contains('"client.multiworld_awareness.MixinFogRenderer",')) return null
+                if (line.contains('"client.multiworld_awareness.MixinBiomeAmbientSoundPlayer",')) return null
+                if (line.contains('"common.portal_generation.MixinItemEntity_P",')) return null
+                if (line.contains('"common.interaction.MixinServerPlayerGameMode",')) return null
+                if (line.contains('"common.chunk_sync.MixinChunkMap_C",')) return line
+                if (line.contains('"common.chunk_sync.IEServerCommonPacketListenerImpl",')) return line
+                if (line.contains('"common.chunk_sync.')) return null
+                if (line.contains('"common.entity_sync.')) return null
+                if (line.contains('"common.position_sync.')) return null
+                if (line.contains('"common.other_sync.MixinPlayerList",')) return null
+                if (line.contains('"client.interaction.MixinMultiPlayerGameMode",')) return null
+                return line
+            }
+        }
+    }
+
+    filesMatching("imm_ptl_peripheral.mixins.json") {
+        if (project.vanilla_core_compile.equals('true')) {
+            filter { line ->
+                if (line.contains(".alternate_dimension.")) return null
+                if (line.contains(".dim_stack.")) return null
+                if (line.contains('"client.portal_wand.MixinDebugRenderer",')) return null
+                if (line.contains('"client.MixinSplashManager_CVB",')) return null
+                return line
+            }
+        }
+    }
+
+    filesMatching("imm_ptl_fabric.mixins.json") {
+        if (project.vanilla_core_compile.equals('true')) {
+            filter { line ->
+                if (line.contains('"client.MixinFabricInvalidateRenderStateCallback"')) return null
+                if (line.contains('"client.MixinFabricClientPlayNetworkAddon",')) return line.replace(',', '')
                 return line
             }
         }

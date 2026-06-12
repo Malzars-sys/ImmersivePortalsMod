@@ -13,6 +13,7 @@ import net.minecraft.client.renderer.ViewArea;
 import net.minecraft.client.renderer.chunk.SectionRenderDispatcher;
 import net.minecraft.client.renderer.chunk.SectionRenderDispatcher.RenderSection;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.ChunkPos;
@@ -125,7 +126,7 @@ public class ImmPtlViewArea extends ViewArea {
     public void releaseAllBuffers() {
         Set<RenderSection> allActiveBuiltChunks = getAllActiveBuiltChunks();
         allActiveBuiltChunks.forEach(
-            RenderSection::releaseBuffers
+            renderSection -> ((IERenderSection) renderSection).portal_fullyReset()
         );
         columnMap.clear();
         presets.clear();
@@ -139,14 +140,11 @@ public class ImmPtlViewArea extends ViewArea {
      * In {@link net.minecraft.client.renderer.SectionOcclusionGraph#initializeQueueForFullUpdate(Camera, Queue)} it reads the RenderChunks in another thread.
      */
     @Override
-    public void repositionCamera(double playerX, double playerZ) {
+    public void repositionCamera(SectionPos cameraSectionPos) {
         Profiler.get().push("built_section_storage");
         
-        int cameraBlockX = Mth.floor(playerX);
-        int cameraBlockZ = Mth.floor(playerZ);
-        
-        int cameraChunkX = cameraBlockX >> 4;
-        int cameraChunkZ = cameraBlockZ >> 4;
+        int cameraChunkX = cameraSectionPos.x();
+        int cameraChunkZ = cameraSectionPos.z();
         ChunkPos cameraChunkPos = new ChunkPos(
             cameraChunkX, cameraChunkZ
         );
@@ -261,7 +259,7 @@ public class ImmPtlViewArea extends ViewArea {
         for (int offsetCY = 0; offsetCY < sectionGridSizeY; offsetCY++) {
             RenderSection builtChunk = factory.new RenderSection(
                 0,
-                sectionX << 4, (offsetCY << 4) + minY, sectionZ << 4
+                SectionPos.asLong(sectionX, offsetCY + minSectionY, sectionZ)
             );
             
             array[offsetCY] = builtChunk;
@@ -342,7 +340,7 @@ public class ImmPtlViewArea extends ViewArea {
                 int num = 0;
                 while (!toDelete.isEmpty() && num < 100) {
                     RenderSection builtChunk = toDelete.poll();
-                    builtChunk.releaseBuffers();
+                    ((IERenderSection) builtChunk).portal_fullyReset();
                     num++;
                 }
                 

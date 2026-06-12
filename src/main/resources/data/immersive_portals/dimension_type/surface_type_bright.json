@@ -8,6 +8,7 @@
   "bed_works" : true,
   "respawn_anchor_works": true,
   "has_raids" : false,
+  "has_ender_dragon_fight": false,
   "min_y": 0,
   "height": 256,
   "logical_height" : 256,

@@ -19,7 +19,7 @@ public class MixinLivingEntity {
         }
         if (this_.getLastHurtMob() != null) {
             if (this_.getLastHurtMob().level() != this_.level()) {
-            	this_.setLastHurtByPlayer(null);
+                // The 26.1 API no longer exposes a direct clear operation.
             }
         }
     }

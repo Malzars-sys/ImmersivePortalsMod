@@ -14,9 +14,6 @@ import qouteall.imm_ptl.core.block_manipulation.BlockManipulationClient;
 @Mixin(Minecraft.class)
 public abstract class MixinMinecraft_B {
     @Shadow
-    protected abstract void pickBlock();
-    
-    @Shadow
     public ClientLevel level;
     
     @Shadow
@@ -105,7 +102,8 @@ public abstract class MixinMinecraft_B {
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/client/Minecraft;pickBlock()V"
-        )
+        ),
+        require = 0
     )
     private void wrapPickBlock(Minecraft instance, Operation<Void> original) {
         if (BlockManipulationClient.isPointingToPortal()) {

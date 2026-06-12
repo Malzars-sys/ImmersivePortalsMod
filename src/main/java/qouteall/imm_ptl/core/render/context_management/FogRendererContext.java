@@ -87,17 +87,9 @@ public class FogRendererContext {
         
         Camera newCamera = new Camera();
         ((IECamera) newCamera).portal_setPos(pos);
-        ((IECamera) newCamera).portal_setFocusedEntity(client.cameraEntity);
+        ((IECamera) newCamera).portal_setFocusedEntity(client.getCameraEntity());
         
         try {
-            FogRenderer.setupColor(
-                newCamera,
-                RenderStates.getPartialTick(),
-                destWorld,
-                client.options.getEffectiveRenderDistance(),
-                client.gameRenderer.getDarkenWorldAmount(RenderStates.getPartialTick())
-            );
-            
             Vec3 result = getCurrentFogColor.get();
             
             return result;

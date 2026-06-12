@@ -9,6 +9,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
@@ -20,6 +21,7 @@ import org.slf4j.Logger;
 import qouteall.imm_ptl.core.IPGlobal;
 import qouteall.imm_ptl.core.IPPerServerInfo;
 import qouteall.imm_ptl.core.McHelper;
+import qouteall.imm_ptl.core.commands.PortalCommand;
 import qouteall.imm_ptl.core.platform_specific.IPConfig;
 import qouteall.imm_ptl.core.portal.Portal;
 import qouteall.imm_ptl.core.portal.PortalExtension;
@@ -236,7 +238,9 @@ public class PortalWandInteraction {
             }
         }
         
-        Portal portal = Portal.ENTITY_TYPE.create(McHelper.getServerWorld(firstSideDimension));
+        Portal portal = Portal.ENTITY_TYPE.create(
+            McHelper.getServerWorld(firstSideDimension), EntitySpawnReason.COMMAND
+        );
         Validate.notNull(portal);
         portal.setOriginPos(
             firstSideLeftBottom
@@ -522,7 +526,7 @@ public class PortalWandInteraction {
     }
     
     private static boolean canPlayerUsePortalWand(ServerPlayer player) {
-        return player.hasPermissions(2)
+        return PortalCommand.hasPermissionLevel(player.createCommandSourceStack(), 2)
             || (IPGlobal.easeCreativePermission && player.isCreative())
             || (IPConfig.getConfig().portalWandUsableOnSurvivalMode
             && player.gameMode.getGameModeForPlayer() == GameType.SURVIVAL);
@@ -816,7 +820,7 @@ public class PortalWandInteraction {
             return;
         }
         
-        Portal portal = Portal.ENTITY_TYPE.create(player.level());
+        Portal portal = Portal.ENTITY_TYPE.create(player.level(), EntitySpawnReason.COMMAND);
         assert portal != null;
         
         portal.readPortalDataFromNbt(copyingSession.portalData);

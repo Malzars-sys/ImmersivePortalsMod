@@ -18,6 +18,7 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
+import net.minecraft.world.level.levelgen.Heightmap;
 import org.apache.commons.lang3.Validate;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -141,7 +142,7 @@ public class ImmPtlClientChunkMap extends ClientChunkCache {
     @Override
     public LevelChunk replaceWithPacketData(
         int x, int z,
-        FriendlyByteBuf buf, CompoundTag nbt,
+        FriendlyByteBuf buf, java.util.Map<Heightmap.Types, long[]> heightmaps,
         Consumer<ClientboundLevelChunkPacketData.BlockEntityTagOutput> consumer
     ) {
         Validate.isTrue(Thread.currentThread() == mainThread);
@@ -150,7 +151,7 @@ public class ImmPtlClientChunkMap extends ClientChunkCache {
         LevelChunk worldChunk = chunkMapForMainThread.get(chunkPosLong);
         if (worldChunk == null) {
             worldChunk = new LevelChunk(this.level, new ChunkPos(x, z));
-            loadChunkDataFromPacket(buf, nbt, worldChunk, consumer);
+            loadChunkDataFromPacket(buf, heightmaps, worldChunk, consumer);
             
             LevelChunk worldChunkToPut = worldChunk; // lambda can only capture effectively final variables
             modifyChunkMap(chunkMap -> {
@@ -158,7 +159,7 @@ public class ImmPtlClientChunkMap extends ClientChunkCache {
             });
         }
         else {
-            loadChunkDataFromPacket(buf, nbt, worldChunk, consumer);
+            loadChunkDataFromPacket(buf, heightmaps, worldChunk, consumer);
         }
         
         this.level.onChunkLoaded(new ChunkPos(x, z));
@@ -177,12 +178,12 @@ public class ImmPtlClientChunkMap extends ClientChunkCache {
      */
     private void loadChunkDataFromPacket(
         FriendlyByteBuf buf,
-        CompoundTag nbt,
+        java.util.Map<Heightmap.Types, long[]> heightmaps,
         LevelChunk worldChunk,
         Consumer<ClientboundLevelChunkPacketData.BlockEntityTagOutput> consumer
     ) {
         try {
-            worldChunk.replaceWithPacketData(buf, nbt, consumer);
+            worldChunk.replaceWithPacketData(buf, heightmaps, consumer);
         }
         catch (Exception e) {
             LOGGER.error(

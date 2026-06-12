@@ -6,7 +6,6 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
@@ -61,17 +60,27 @@ public class WireRenderingHelper {
         float green = ((color >> 8) & 0xff) / 255f;
         float blue = (color & 0xff) / 255f;
         
-        LevelRenderer.renderLineBox(
-            matrixStack,
-            vertexConsumer,
-            -boxSize / 2,
-            -boxSize / 2,
-            -boxSize / 2,
-            boxSize / 2,
-            boxSize / 2,
-            boxSize / 2,
-            red, green, blue, alpha
-        );
+        double min = -boxSize / 2;
+        double max = boxSize / 2;
+        int packedColor = ((int) (alpha * 255) << 24)
+            | ((int) (red * 255) << 16)
+            | ((int) (green * 255) << 8)
+            | (int) (blue * 255);
+        Vec3[] vertices = {
+            new Vec3(min, min, min), new Vec3(max, min, min),
+            new Vec3(max, min, min), new Vec3(max, min, max),
+            new Vec3(max, min, max), new Vec3(min, min, max),
+            new Vec3(min, min, max), new Vec3(min, min, min),
+            new Vec3(min, max, min), new Vec3(max, max, min),
+            new Vec3(max, max, min), new Vec3(max, max, max),
+            new Vec3(max, max, max), new Vec3(min, max, max),
+            new Vec3(min, max, max), new Vec3(min, max, min),
+            new Vec3(min, min, min), new Vec3(min, max, min),
+            new Vec3(max, min, min), new Vec3(max, max, min),
+            new Vec3(max, min, max), new Vec3(max, max, max),
+            new Vec3(min, min, max), new Vec3(min, max, max)
+        };
+        renderLines(vertexConsumer, Vec3.ZERO, Vec3.ZERO, vertices, 1, DQuaternion.identity, packedColor, matrixStack);
         matrixStack.popPose();
     }
     

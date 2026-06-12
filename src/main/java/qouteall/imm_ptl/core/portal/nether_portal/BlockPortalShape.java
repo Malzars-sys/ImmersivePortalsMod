@@ -56,8 +56,8 @@ public class BlockPortalShape {
         CompoundTag tag
     ) {
         this(
-            readArea(tag.getList("poses", 3)),
-            Direction.Axis.values()[tag.getInt("axis")]
+            readArea(tag.getList("poses").orElseGet(ListTag::new)),
+            Direction.Axis.values()[tag.getInt("axis").orElseThrow()]
         );
     }
     
@@ -69,9 +69,9 @@ public class BlockPortalShape {
         
         for (int i = 0; i < size / 3; i++) {
             result.add(new BlockPos(
-                list.getInt(i * 3 + 0),
-                list.getInt(i * 3 + 1),
-                list.getInt(i * 3 + 2)
+                list.getInt(i * 3 + 0).orElseThrow(),
+                list.getInt(i * 3 + 1).orElseThrow(),
+                list.getInt(i * 3 + 2).orElseThrow()
             ));
         }
         

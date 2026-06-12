@@ -4,8 +4,6 @@ import net.minecraft.util.profiling.Profiler;
 
 import com.llamalad7.mixinextras.sugar.Local;
 import com.mojang.blaze3d.pipeline.RenderTarget;
-import com.mojang.blaze3d.platform.Lighting;
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.buffers.GpuBuffer;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -195,8 +193,7 @@ public abstract class MixinLevelRenderer implements IEWorldRenderer {
     ) {
         IPCGlobal.renderer.onAfterTranslucentRendering(modelView);
         
-        // make hand rendering normal
-        Lighting.setupLevel();
+        // Lighting restoration is handled by the 26.1 render pipeline.
     }
     
     @Inject(
@@ -259,7 +256,7 @@ public abstract class MixinLevelRenderer implements IEWorldRenderer {
     ) {
         if (WorldRenderInfo.isRendering()) {
             if (level.dimension() != RenderStates.originalPlayerDimension) {
-                sectionRenderDispatcher.setCamera(camera.position());
+                sectionRenderDispatcher.setCameraPosition(camera.position());
             }
         }
         
@@ -319,20 +316,6 @@ public abstract class MixinLevelRenderer implements IEWorldRenderer {
                     Profiler.get().pop();
                 }
             }
-        }
-    }
-    
-    @Redirect(
-        method = "renderLevel",
-        at = @At(
-            value = "INVOKE",
-            target = "Lcom/mojang/blaze3d/systems/RenderSystem;clear(IZ)V",
-            remap = false
-        )
-    )
-    private void redirectClearing(int int_1, boolean boolean_1) {
-        if (!IPCGlobal.renderer.replaceFrameBufferClearing()) {
-            RenderSystem.clear(int_1, boolean_1);
         }
     }
     
@@ -582,8 +565,7 @@ public abstract class MixinLevelRenderer implements IEWorldRenderer {
             sectionPos.x(), sectionPos.y(), sectionPos.z()
         );
         
-        return renderChunk != null
-            && renderChunk.compiled.get() != SectionRenderDispatcher.CompiledSection.UNCOMPILED;
+        return renderChunk != null && renderChunk.getSectionMesh().hasRenderableLayers();
     }
     
     @Override

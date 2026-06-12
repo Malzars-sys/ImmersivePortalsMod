@@ -23,7 +23,8 @@ public class MixinServerGamePacketListenerImpl_Redirect {
     @ModifyVariable(
         method = "send(Lnet/minecraft/network/protocol/Packet;Lnet/minecraft/network/PacketSendListener;)V",
         at = @At("HEAD"),
-        argsOnly = true
+        argsOnly = true,
+        require = 0
     )
     private Packet modifyPacket(Packet originalPacket) {
         if (PacketRedirection.getForceRedirectDimension() == null) {
@@ -44,7 +45,8 @@ public class MixinServerGamePacketListenerImpl_Redirect {
             value = "INVOKE",
             target = "Lnet/minecraft/network/Connection;send(Lnet/minecraft/network/protocol/Packet;Lnet/minecraft/network/PacketSendListener;Z)V"
         ),
-        cancellable = true
+        cancellable = true,
+        require = 0
     )
     private void onSend(
         Packet<?> packet, @Nullable PacketSendListener packetSendListener, CallbackInfo ci

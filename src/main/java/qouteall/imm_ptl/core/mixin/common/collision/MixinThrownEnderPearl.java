@@ -19,7 +19,8 @@ public class MixinThrownEnderPearl {
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/world/entity/projectile/ThrownEnderpearl;discard()V"
-        )
+        ),
+        require = 0
     )
     private void onOnHitDiscard(HitResult result, CallbackInfo ci) {
         ThrownEnderpearl this_ = (ThrownEnderpearl) (Object) this;

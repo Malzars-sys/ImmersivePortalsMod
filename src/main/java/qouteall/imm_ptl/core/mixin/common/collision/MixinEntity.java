@@ -156,7 +156,8 @@ public abstract class MixinEntity implements IEEntity, ImmPtlEntityExtension {
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/world/entity/Entity;getBoundingBox()Lnet/minecraft/world/phys/AABB;"
-        )
+        ),
+        require = 0
     )
     private AABB redirectBoundingBoxInCheckingBlockCollision(Entity entity) {
         return ip_getActiveCollisionBox(entity.getBoundingBox());
@@ -170,7 +171,8 @@ public abstract class MixinEntity implements IEEntity, ImmPtlEntityExtension {
             shift = At.Shift.AFTER
         ),
         locals = LocalCapture.CAPTURE_FAILHARD,
-        cancellable = true
+        cancellable = true,
+        require = 0
     )
     private void onCheckInsideBlocks(CallbackInfo ci, AABB box) {
         if (box == null) {
@@ -272,7 +274,7 @@ public abstract class MixinEntity implements IEEntity, ImmPtlEntityExtension {
             ip_portalCollisionHandler.update(this_);
         }
         
-        if (level.isClientSide) {
+        if (level.isClientSide()) {
             IPMcHelper.onClientEntityTick(this_);
         }
     }

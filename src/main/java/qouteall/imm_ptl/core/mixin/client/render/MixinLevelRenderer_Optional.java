@@ -42,10 +42,7 @@ public class MixinLevelRenderer_Optional {
         require = 0
     )
     private RenderType redirectGetTranslucent() {
-        if (PortalRendering.isRendering()) {
-            return null;
-        }
-        return RenderType.translucent();
+        return null;
     }
     
     //the camera position is used for translucent sort
@@ -66,7 +63,7 @@ public class MixinLevelRenderer_Optional {
                 return;
             }
         }
-        chunkBuilder.setCamera(cameraPosition);
+        chunkBuilder.setCameraPosition(cameraPosition);
     }
     
     @Inject(

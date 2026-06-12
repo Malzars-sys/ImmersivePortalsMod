@@ -72,6 +72,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static qouteall.imm_ptl.core.chunk_loading.ImmPtlChunkTickets.getDistanceManager;
+import static qouteall.imm_ptl.core.commands.PortalCommand.hasPermissionLevel;
 
 public class PortalDebugCommands {
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -155,7 +156,7 @@ public class PortalDebugCommands {
         builder.then(Commands.literal("profile")
             .then(Commands
                 .literal("set_lag_logging_threshold")
-                .requires(serverCommandSource -> serverCommandSource.hasPermission(4))
+                .requires(serverCommandSource -> hasPermissionLevel(serverCommandSource, 4))
                 .then(Commands.argument("ms", IntegerArgumentType.integer())
                     .executes(context -> {
                         int ms = IntegerArgumentType.getInteger(context, "ms");
@@ -166,7 +167,7 @@ public class PortalDebugCommands {
                 )
             ).then(Commands
                 .literal("gc")
-                .requires(serverCommandSource -> serverCommandSource.hasPermission(4))
+                .requires(serverCommandSource -> hasPermissionLevel(serverCommandSource, 4))
                 .executes(context -> {
                     System.gc();
                     
@@ -189,7 +190,7 @@ public class PortalDebugCommands {
         
         builder.then(Commands
             .literal("create_command_stick")
-            .requires(serverCommandSource -> serverCommandSource.hasPermission(2))
+            .requires(serverCommandSource -> hasPermissionLevel(serverCommandSource, 2))
             .then(Commands.argument("command", StringArgumentType.string())
                 .executes(context -> {
                     PortalCommand.createCommandStickCommandSignal.emit(
@@ -245,7 +246,7 @@ public class PortalDebugCommands {
         
         builder.then(Commands
             .literal("erase_chunk")
-            .requires(serverCommandSource -> serverCommandSource.hasPermission(3))
+            .requires(serverCommandSource -> hasPermissionLevel(serverCommandSource, 3))
             .then(Commands.argument("rChunks", IntegerArgumentType.integer())
                 .executes(context -> {
                     ServerPlayer player = context.getSource().getPlayerOrException();
@@ -283,7 +284,7 @@ public class PortalDebugCommands {
         
         builder.then(Commands
             .literal("report_chunk_loaders")
-            .requires(serverCommandSource -> serverCommandSource.hasPermission(3))
+            .requires(serverCommandSource -> hasPermissionLevel(serverCommandSource, 3))
             .executes(context -> {
                 ServerPlayer player = context.getSource().getPlayerOrException();
                 ChunkVisibility.foreachBaseChunkLoaders(
@@ -300,7 +301,7 @@ public class PortalDebugCommands {
         
         builder.then(Commands
             .literal("report_server_entities_nearby")
-            .requires(serverCommandSource -> serverCommandSource.hasPermission(3))
+            .requires(serverCommandSource -> hasPermissionLevel(serverCommandSource, 3))
             .executes(context -> {
                 ServerPlayer player = context.getSource().getPlayerOrException();
                 List<Entity> entities = player.level().getEntitiesOfClass(
@@ -316,7 +317,7 @@ public class PortalDebugCommands {
         
         builder.then(Commands
             .literal("report_loaded_portals")
-            .requires(serverCommandSource -> serverCommandSource.hasPermission(3))
+            .requires(serverCommandSource -> hasPermissionLevel(serverCommandSource, 3))
             .executes(context -> {
                 CommandSourceStack source = context.getSource();
                 MinecraftServer server = source.getServer();
@@ -337,7 +338,7 @@ public class PortalDebugCommands {
         );
         
         builder.then(Commands.literal("is_chunk_loaded")
-            .requires(serverCommandSource -> serverCommandSource.hasPermission(2))
+            .requires(serverCommandSource -> hasPermissionLevel(serverCommandSource, 2))
             .then(Commands.argument("dim", DimensionArgument.dimension())
                 .then(Commands.argument("chunkX", IntegerArgumentType.integer())
                     .then(Commands.argument("chunkZ", IntegerArgumentType.integer())
@@ -357,7 +358,7 @@ public class PortalDebugCommands {
         );
         
         builder.then(Commands.literal("report_chunk_at")
-            .requires(serverCommandSource -> serverCommandSource.hasPermission(2))
+            .requires(serverCommandSource -> hasPermissionLevel(serverCommandSource, 2))
             .then(Commands.argument("dim", DimensionArgument.dimension())
                 .then(Commands.argument("pos", BlockPosArgument.blockPos())
                     .executes(context -> {
@@ -399,7 +400,7 @@ public class PortalDebugCommands {
         );
         
         builder.then(Commands.literal("list_portals")
-            .requires(serverCommandSource -> serverCommandSource.hasPermission(3))
+            .requires(serverCommandSource -> hasPermissionLevel(serverCommandSource, 3))
             .executes(context -> {
                 ServerPlayer player = context.getSource().getPlayerOrException();
                 
@@ -429,7 +430,7 @@ public class PortalDebugCommands {
         );
         
         builder.then(Commands.literal("report_resource_consumption")
-            .requires(serverCommandSource -> serverCommandSource.hasPermission(2))
+            .requires(serverCommandSource -> hasPermissionLevel(serverCommandSource, 2))
             .executes(context -> {
                 StringBuilder str = new StringBuilder();
                 
@@ -452,7 +453,7 @@ public class PortalDebugCommands {
         );
         
         builder.then(Commands.literal("report_chunk_ticket_stat")
-            .requires(serverCommandSource -> serverCommandSource.hasPermission(2))
+            .requires(serverCommandSource -> hasPermissionLevel(serverCommandSource, 2))
             .executes(context -> {
                 ServerLevel world = context.getSource().getLevel();
                 Iterable<ChunkHolder> chunkHolders = ((IEChunkMap_Accessor) world.getChunkSource().chunkMap).ip_getChunks();
@@ -483,7 +484,7 @@ public class PortalDebugCommands {
         );
         
         builder.then(Commands.literal("report_per_player_chunk_loading")
-            .requires(serverCommandSource -> serverCommandSource.hasPermission(2))
+            .requires(serverCommandSource -> hasPermissionLevel(serverCommandSource, 2))
             .executes(context -> {
                 List<ServerPlayer> players = MiscHelper.getServer().getPlayerList().getPlayers();
                 for (ServerPlayer player : players) {
@@ -496,7 +497,7 @@ public class PortalDebugCommands {
         );
         
         builder.then(Commands.literal("save_all_chunks")
-            .requires(serverCommandSource -> serverCommandSource.hasPermission(2))
+            .requires(serverCommandSource -> hasPermissionLevel(serverCommandSource, 2))
             .executes(context -> {
                 MinecraftServer server = context.getSource().getServer();
                 server.saveAllChunks(true, true, false);
@@ -506,7 +507,7 @@ public class PortalDebugCommands {
         
         builder.then(Commands
             .literal("simplify_portal_mesh")
-            .requires(serverCommandSource -> serverCommandSource.hasPermission(2))
+            .requires(serverCommandSource -> hasPermissionLevel(serverCommandSource, 2))
             .executes(context -> PortalCommand.processPortalTargetedCommand(context, portal -> {
                 PortalShape portalShape = portal.getPortalShape();
                 
@@ -574,10 +575,10 @@ public class PortalDebugCommands {
         
         builder.then(Commands
             .literal("check_biome_registry")
-            .requires(serverCommandSource -> serverCommandSource.hasPermission(3))
+            .requires(serverCommandSource -> hasPermissionLevel(serverCommandSource, 3))
             .executes(context -> {
                 RegistryAccess.Frozen registryAccess = MiscHelper.getServer().registryAccess();
-                Registry<Biome> biomes = registryAccess.registryOrThrow(Registries.BIOME);
+                Registry<Biome> biomes = registryAccess.lookupOrThrow(Registries.BIOME);
                 Map<String, Integer> map = new HashMap<>();
                 for (Map.Entry<ResourceKey<Biome>, Biome> entry : biomes.entrySet()) {
                     String strId = entry.getKey().identifier().toString();

@@ -35,21 +35,6 @@ public abstract class MixinCamera implements IECamera {
     @Shadow
     protected abstract void setPosition(Vec3 vec3d_1);
     
-    @Shadow
-    public abstract Entity getEntity();
-    
-    @Inject(
-        method = "Lnet/minecraft/client/Camera;setup(Lnet/minecraft/world/level/BlockGetter;Lnet/minecraft/world/entity/Entity;ZZF)V",
-        at = @At("RETURN")
-    )
-    private void onUpdateFinished(
-        BlockGetter area, Entity focusedEntity, boolean thirdPerson,
-        boolean inverseView, float partialTick, CallbackInfo ci
-    ) {
-        Camera this_ = (Camera) (Object) this;
-        WorldRenderInfo.adjustCameraPos(this_);
-    }
-    
     @Inject(
         method = "Lnet/minecraft/client/Camera;getFluidInCamera()Lnet/minecraft/world/level/material/FogType;",
         at = @At("HEAD"),

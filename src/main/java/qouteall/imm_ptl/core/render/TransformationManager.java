@@ -228,14 +228,7 @@ public class TransformationManager {
     }
     
     private static void updateCamera(Minecraft client) {
-        Camera camera = client.gameRenderer.getMainCamera();
-        camera.setup(
-            client.level,
-            client.player,
-            !client.options.getCameraType().isFirstPerson(),
-            client.options.getCameraType().isMirrored(),
-            RenderStates.getPartialTick()
-        );
+        // Camera updates are extracted by the 26.1 renderer.
     }
     
     public static Matrix4f getMirrorTransformation(Vec3 normal) {

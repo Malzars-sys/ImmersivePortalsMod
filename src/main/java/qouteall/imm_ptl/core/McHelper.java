@@ -27,8 +27,10 @@ import net.minecraft.server.level.ServerChunkCache;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.AbortableIterationConsumer;
+import net.minecraft.util.ProblemReporter;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
@@ -37,6 +39,8 @@ import net.minecraft.world.level.entity.EntitySectionStorage;
 import net.minecraft.world.level.entity.EntityTypeTest;
 import net.minecraft.world.level.entity.LevelEntityGetter;
 import net.minecraft.world.level.storage.LevelStorageSource;
+import net.minecraft.world.level.storage.TagValueInput;
+import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
@@ -120,7 +124,7 @@ public class McHelper {
         String text
     ) {
         Helper.log(text);
-        player.displayClientMessage(Component.literal(text), false);
+        player.sendSystemMessage(Component.literal(text));
     }
     
     public static long getServerGameTime() {
@@ -318,10 +322,7 @@ public class McHelper {
         // minecarts, boats and LivingEntity use position interpolation
         // don't make interpolate, or it may interpolate into unloaded chunks
         vehicle.setPos(newVehiclePos.x(), newVehiclePos.y(), newVehiclePos.z());
-        vehicle.lerpTo(
-            newVehiclePos.x(), newVehiclePos.y(), newVehiclePos.z(),
-            vehicle.getYRot(), vehicle.getXRot(), 0
-        );
+        vehicle.moveOrInterpolateTo(newVehiclePos, vehicle.getYRot(), vehicle.getXRot());
         
         McHelper.setPosAndLastTickPos(
             vehicle, newVehiclePos, newVehicleLastTickPos
@@ -396,11 +397,17 @@ public class McHelper {
     
     
     public static Portal copyEntity(Portal portal) {
-        Portal newPortal = ((Portal) portal.getType().create(portal.level()));
+        Portal newPortal = ((Portal) portal.getType().create(portal.level(), EntitySpawnReason.LOAD));
         
         Validate.notNull(newPortal);
         
-        newPortal.load(portal.saveWithoutId(new CompoundTag()));
+        TagValueOutput output = TagValueOutput.createWithContext(
+            ProblemReporter.DISCARDING, portal.registryAccess()
+        );
+        portal.saveWithoutId(output);
+        newPortal.load(TagValueInput.create(
+            ProblemReporter.DISCARDING, newPortal.registryAccess(), output.buildResult()
+        ));
         return newPortal;
     }
     
@@ -422,9 +429,7 @@ public class McHelper {
     
     public static MutableComponent getLinkText(String link) {
         return Component.literal(link).withStyle(
-            style -> style.withClickEvent(new ClickEvent(
-                ClickEvent.Action.OPEN_URL, link
-            )).withUnderlined(true)
+            style -> style.withClickEvent(new ClickEvent.OpenUrl(java.net.URI.create(link))).withUnderlined(true)
         );
     }
     
@@ -433,9 +438,11 @@ public class McHelper {
     }
     
     public static void invokeCommandAs(Entity commandSender, List<String> commandList) {
-        CommandSourceStack commandSource = commandSender.createCommandSourceStack().withPermission(2).withSuppressedOutput();
         MinecraftServer server = commandSender.level().getServer();
         assert server != null;
+        CommandSourceStack commandSource = commandSender
+            .createCommandSourceStackForNameResolution((ServerLevel) commandSender.level())
+            .withSuppressedOutput();
         Commands commandManager = server.getCommands();
         
         for (String command : commandList) {
@@ -455,7 +462,7 @@ public class McHelper {
             return;
         }
         
-        entityTracker.broadcastAndSend(packet);
+        getIEChunkMap(entity.level().dimension()).ip_resendSpawnPacketToTrackers(entity);
     }
     
     //it's a little bit incorrect with corner glass pane
@@ -808,7 +815,7 @@ public class McHelper {
             }
             
             for (ServerPlayer player : playerList) {
-                player.displayClientMessage(text, false);
+                player.sendSystemMessage(text);
             }
             
             return true;

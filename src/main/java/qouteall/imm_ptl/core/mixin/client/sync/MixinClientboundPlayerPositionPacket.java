@@ -14,7 +14,11 @@ import qouteall.imm_ptl.core.network.ImmPtlNetworkConfig;
 
 @Mixin(ClientboundPlayerPositionPacket.class)
 public class MixinClientboundPlayerPositionPacket {
-    @Inject(method = "<init>(Lnet/minecraft/network/FriendlyByteBuf;)V", at = @At("RETURN"))
+    @Inject(
+        method = "<init>(Lnet/minecraft/network/FriendlyByteBuf;)V",
+        at = @At("RETURN"),
+        require = 0
+    )
     private void onRead(FriendlyByteBuf buf, CallbackInfo ci) {
         if (ImmPtlNetworkConfig.doesServerHaveImmPtl()) {
             ResourceKey<Level> playerDimension = buf.readResourceKey(Registries.DIMENSION);

@@ -89,7 +89,7 @@ public class RenderStates {
     ) {
         ClientWorldLoader.initializeIfNeeded();
         
-        Entity cameraEntity = MyRenderHelper.client.cameraEntity;
+        Entity cameraEntity = MyRenderHelper.client.getCameraEntity();
         
         if (cameraEntity == null) {
             return;
