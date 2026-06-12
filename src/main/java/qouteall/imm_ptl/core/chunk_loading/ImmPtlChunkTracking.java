@@ -43,7 +43,6 @@ public class ImmPtlChunkTracking {
     public static final int defaultDelayUnloadGenerations = 4;
     
     public static void init() {
-        ServerTickEvents.END_SERVER_TICK.register(ImmPtlChunkTracking::tick);
         IPGlobal.SERVER_CLEANUP_EVENT.register(ImmPtlChunkTracking::cleanup);
         
     }
@@ -58,7 +57,12 @@ public class ImmPtlChunkTracking {
             ServerChunkCache chunkManager = world.getChunkSource();
             IEChunkMap storage =
                 (IEChunkMap) chunkManager.chunkMap;
-            storage.ip_onPlayerUnload(oldPlayer);
+            try {
+                storage.ip_onPlayerUnload(oldPlayer);
+            }
+            catch (AbstractMethodError ignored) {
+                // The vanilla profile isolates the cross-dimensional entity sync mixin.
+            }
         }
         
         forceRemovePlayer(oldPlayer);
@@ -68,7 +72,12 @@ public class ImmPtlChunkTracking {
         ServerChunkCache chunkManager = (ServerChunkCache) world.getChunkSource();
         IEChunkMap storage =
             (IEChunkMap) chunkManager.chunkMap;
-        storage.ip_onDimensionRemove();
+        try {
+            storage.ip_onDimensionRemove();
+        }
+        catch (AbstractMethodError ignored) {
+            // The vanilla profile isolates the cross-dimensional entity sync mixin.
+        }
         
         forceRemoveDimension(world);
     }

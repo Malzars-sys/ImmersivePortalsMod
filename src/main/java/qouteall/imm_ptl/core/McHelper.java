@@ -451,10 +451,25 @@ public class McHelper {
     }
     
     public static void resendSpawnPacketToTrackers(Entity entity) {
-        getIEChunkMap(entity.level().dimension()).ip_resendSpawnPacketToTrackers(entity);
+        if (entity instanceof Portal portal) {
+            syncPortalToPlayers(portal);
+            return;
+        }
+
+        try {
+            getIEChunkMap(entity.level().dimension()).ip_resendSpawnPacketToTrackers(entity);
+        }
+        catch (AbstractMethodError ignored) {
+            // The vanilla profile isolates the cross-dimensional entity sync mixin.
+        }
     }
     
     public static void sendToTrackers(Entity entity, Packet<?> packet) {
+        if (entity instanceof Portal portal) {
+            syncPortalToPlayers(portal);
+            return;
+        }
+
         ChunkMap.TrackedEntity entityTracker =
             getIEChunkMap(entity.level().dimension()).ip_getEntityTrackerMap().get(entity.getId());
         if (entityTracker == null) {
@@ -462,7 +477,24 @@ public class McHelper {
             return;
         }
         
-        getIEChunkMap(entity.level().dimension()).ip_resendSpawnPacketToTrackers(entity);
+        resendSpawnPacketToTrackers(entity);
+    }
+
+    public static void syncPortalsToPlayer(ServerPlayer player) {
+        player.level().getAllEntities().forEach(entity -> {
+            if (entity instanceof Portal portal) {
+                syncPortalToPlayer(portal, player);
+            }
+        });
+    }
+
+    private static void syncPortalToPlayers(Portal portal) {
+        ServerLevel world = (ServerLevel) portal.level();
+        world.players().forEach(player -> syncPortalToPlayer(portal, player));
+    }
+
+    private static void syncPortalToPlayer(Portal portal, ServerPlayer player) {
+        player.connection.send(portal.getAddEntityPacket(null));
     }
     
     //it's a little bit incorrect with corner glass pane
@@ -846,6 +878,9 @@ public class McHelper {
         
         if (!spawned) {
             LOGGER.error("Failed to spawn {} {}", entity, entity.level());
+        }
+        else if (entity instanceof Portal portal) {
+            syncPortalToPlayers(portal);
         }
     }
     

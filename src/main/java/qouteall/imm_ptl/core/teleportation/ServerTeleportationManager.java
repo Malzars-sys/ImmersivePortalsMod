@@ -271,7 +271,9 @@ public class ServerTeleportationManager {
         }
         
         // cannot teleport if having awaiting teleport
-        if (((IEServerPlayNetworkHandler) player.connection).ip_hasAwaitingTeleport()) {
+        if (player.connection instanceof IEServerPlayNetworkHandler networkHandler
+            && networkHandler.ip_hasAwaitingTeleport()
+        ) {
             return "has awaiting teleport";
         }
         

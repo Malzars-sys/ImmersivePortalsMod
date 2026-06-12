@@ -228,6 +228,11 @@ processResources {
                 if (line.contains('"common.position_sync.')) return null
                 if (line.contains('"common.other_sync.MixinPlayerList",')) return null
                 if (line.contains('"client.interaction.MixinMultiPlayerGameMode",')) return null
+                if (line.contains('"client.sync.MixinServerBoundMovePlayerPacket",')) return null
+                if (line.contains('"client.sync.MixinServerboundMovePlayerPacketPos",')) return null
+                if (line.contains('"client.sync.MixinServerBoundMovePlayerPacketPosRot",')) return null
+                if (line.contains('"client.sync.MixinServerboundMovePlayerPacketRot",')) return null
+                if (line.contains('"client.sync.MixinServerboundMovePlayerPacketStatusOnly"')) return null
                 return line
             }
         }

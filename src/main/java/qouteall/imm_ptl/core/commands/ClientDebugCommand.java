@@ -48,6 +48,7 @@ import qouteall.imm_ptl.core.CHelper;
 import qouteall.imm_ptl.core.ClientWorldLoader;
 import qouteall.imm_ptl.core.IPCGlobal;
 import qouteall.imm_ptl.core.IPGlobal;
+import qouteall.imm_ptl.core.IPMcHelper;
 import qouteall.imm_ptl.core.McHelper;
 import qouteall.imm_ptl.core.ducks.IEClientWorld;
 import qouteall.imm_ptl.core.ducks.IEEntity;
@@ -212,6 +213,53 @@ public class ClientDebugCommand {
                         }
                     });
                 }
+                return 0;
+            })
+        );
+
+        builder.then(ClientCommands.literal("test_minimal_portal_traversal")
+            .executes(context -> {
+                LocalPlayer player = Minecraft.getInstance().player;
+                if (player == null) {
+                    return 0;
+                }
+
+                Portal portal = IPMcHelper.getNearbyPortals(player, 64)
+                    .min(java.util.Comparator.comparingDouble(player::distanceToSqr))
+                    .orElse(null);
+                if (portal == null) {
+                    context.getSource().sendFeedback(Component.literal("No nearby portal."));
+                    return 0;
+                }
+
+                Vec3 eyeOffset = McHelper.getEyeOffset(player);
+                Vec3 startEyePos = portal.getOriginPos().subtract(portal.getNormal().scale(0.25));
+                Vec3 startFeetPos = startEyePos.subtract(eyeOffset);
+                Vec3 traversalVelocity = portal.getNormal().scale(0.7);
+                MinecraftServer server = Minecraft.getInstance().getSingleplayerServer();
+                if (server == null) {
+                    context.getSource().sendFeedback(Component.literal(
+                        "Minimal traversal test requires an integrated server."
+                    ));
+                    return 0;
+                }
+                server.execute(() -> {
+                    ServerPlayer serverPlayer = server.getPlayerList().getPlayer(player.getUUID());
+                    if (serverPlayer != null) {
+                        serverPlayer.connection.teleport(
+                            startFeetPos.x, startFeetPos.y, startFeetPos.z,
+                            serverPlayer.getYRot(), serverPlayer.getXRot()
+                        );
+                    }
+                });
+                IPGlobal.CLIENT_TASK_LIST.addTask(MyTaskList.withDelay(
+                    10,
+                    MyTaskList.oneShotTask(() -> player.setDeltaMovement(traversalVelocity))
+                ));
+                IPGlobal.teleportationDebugEnabled = true;
+                context.getSource().sendFeedback(Component.literal(
+                    "Testing minimal traversal through " + portal
+                ));
                 return 0;
             })
         );

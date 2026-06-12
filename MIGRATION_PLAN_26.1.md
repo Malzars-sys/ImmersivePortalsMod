@@ -495,6 +495,127 @@ Critères de sortie :
 - portail visible et traversable ;
 - aucune dépendance Sodium/Iris.
 
+### 4.3 Test de lancement client vanilla
+
+Statut : terminé le 12 juin 2026.
+
+- `compileJava` vanilla : réussi, 0 erreur
+- menu principal : atteint
+- mod chargé : confirmé (`immersive_portals 7.0.0-alpha.1`)
+- monde solo : atteint, joueur connecté et stable pendant le test
+- portail visible / traversable : non vérifié, rendu avancé maintenu no-op
+- nouvelles erreurs de compilation : 0
+
+Les mixins runtime obsolètes liés à DimLib, au rendu avancé et à la
+synchronisation cross-dimensionnelle ont été isolés du profil vanilla.
+Le monde de test est `run/saves/Phase43Test3`.
+
+### 4.4 Test portail minimal vanilla
+
+Statut : terminé le 12 juin 2026.
+
+- portail créé : oui
+- portail sauvegardé et rechargé : oui
+- portail visible : non
+- portail traversable : non
+- crash final : non
+- `compileJava` vanilla : réussi, 0 erreur
+- nouvelles erreurs de compilation : 0
+
+Le portail Overworld vers Overworld est créé avec
+`/portal euler make_portal` et son entité persiste après rechargement du monde
+`Phase43Test3`. Le profil vanilla minimal ne synchronise cependant pas encore
+l'entité portail vers le client : le portail reste invisible et la traversée
+ne se déclenche pas.
+
+Trois blocages runtime directement liés au test ont été corrigés :
+
+- callbacks `IEChunkMap` facultatifs lorsque les mixins cross-dimensionnels
+  sont isolés ;
+- validation réseau sans cast forcé vers `IEServerPlayNetworkHandler` ;
+- mise à jour du contexte fog en no-op lorsque son mixin est isolé.
+
+Les crash reports complets des blocages corrigés sont :
+
+- `run/crash-reports/crash-2026-06-12_14.28.49-server.txt`
+- `run/crash-reports/crash-2026-06-12_14.34.09-client.txt`
+
+### 4.5 Synchronisation client minimale des portails
+
+Statut : terminé le 12 juin 2026.
+
+- `compileJava` vanilla : réussi, 0 erreur
+- `runClient` vanilla : réussi
+- portail créé : oui
+- portail présent côté client : oui
+- portail visible : non, rendu avancé maintenu no-op
+- portail traversable : non confirmé pendant ce test
+- crash final : non
+- nouvelles erreurs de compilation : 0
+
+Le suivi d'entités cross-dimensionnel complet reste isolé. Il remplace trop de
+comportements vanilla et dépend du gestionnaire de chunks encore désactivé.
+Une façade minimale synchronise désormais les `PortalSyncPacket` :
+
+- lors de la création d'un portail ;
+- lors de la connexion d'un joueur ;
+- lors d'une demande de resynchronisation d'un portail.
+
+La commande client `imm_ptl_client_debug report_loaded_portals` confirme que
+les portails persistants du monde `Phase43Test3` sont présents côté client.
+`IEChunkMap` et `IEServerPlayNetworkHandler` restent optionnels et sécurisés.
+
+### 4.6 Rendu minimal visible des portails
+
+Statut : terminé le 12 juin 2026.
+
+- `compileJava` vanilla : réussi, 0 erreur
+- `runClient` vanilla : réussi
+- portail présent côté client : oui
+- portail visible : oui, sous forme de cadre cyan minimal
+- portail traversable : non testé pendant cette phase
+- crash final : non
+- nouvelles erreurs de compilation : 0
+
+`PortalEntityRenderer` soumet désormais un cadre translucide et ses diagonales
+avec `SubmitNodeCollector.submitCustomGeometry` et `RenderTypes.linesTranslucent`.
+La géométrie utile est copiée dans `PortalRenderState`, sans réactiver le rendu
+récursif, les shaders hérités, le stencil ou les framebuffers avancés.
+
+Le monde `Phase43Test3` se charge sans crash. La commande client
+`imm_ptl_client_debug report_loaded_portals` confirme cinq portails côté client,
+et la capture `run/screenshots/2026-06-12_15.07.02.png` montre le cadre minimal
+dans le monde.
+
+### 4.7 Traversée minimale des portails vanilla
+
+Statut : terminé le 12 juin 2026.
+
+- `compileJava` vanilla : réussi, 0 erreur
+- `runClient` vanilla : réussi
+- portail visible : oui
+- traversée Overworld vers Overworld déclenchée : oui
+- téléportation correcte : oui
+- Nether / End : non testés
+- crash final : non
+- nouvelles erreurs de compilation : 0
+
+La commande de développement
+`imm_ptl_client_debug test_minimal_portal_traversal` prépare un franchissement
+reproductible du portail client le plus proche. Le test final produit
+`Client Teleported Statically`, puis la position du joueur correspond à la
+destination du portail avant sa chute naturelle.
+
+La chaîne existante `ClientTeleportationManager` vers le paquet Fabric
+`TeleportPacket` et `ServerTeleportationManager` fonctionne donc sans réactiver
+les mixins de synchronisation lourde. Aucun repli serveur supplémentaire n'a
+été conservé.
+
+Un crash découvert pendant le test a été corrigé dans le rendu minimal :
+`RenderTypes.linesTranslucent()` exige l'attribut `LineWidth` sur chaque sommet.
+Le stacktrace complet est conservé dans
+`run/crash-reports/crash-2026-06-12_15.13.43-client.txt`.
+
 ## Phase 4 - Réactivation Sodium puis Iris
 
 Ordre strict :
@@ -528,5 +649,5 @@ Critères de sortie :
 
 ## Prochaine action autorisée
 
-Tester le lancement du client vanilla et stabiliser le comportement minimal
-des portails avant toute réactivation de Sodium, Iris ou DimLib.
+Tester la création et la traversée minimale d'un portail avec le profil
+vanilla avant toute réactivation de Sodium, Iris ou DimLib.

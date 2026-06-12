@@ -75,8 +75,8 @@ public class ImmPtlViewArea extends ViewArea {
             
             LevelRenderer worldRenderer = ClientWorldLoader.WORLD_RENDERER_MAP.get(dimension);
             
-            if (worldRenderer != null) {
-                ViewArea viewArea = ((IEWorldRenderer) worldRenderer).ip_getBuiltChunkStorage();
+            if (worldRenderer instanceof IEWorldRenderer ieWorldRenderer) {
+                ViewArea viewArea = ieWorldRenderer.ip_getBuiltChunkStorage();
                 if (viewArea instanceof ImmPtlViewArea immPtlViewArea) {
                     immPtlViewArea.onChunkUnload(section.getPos().x(), section.getPos().z());
                 }
@@ -88,7 +88,10 @@ public class ImmPtlViewArea extends ViewArea {
                 for (ClientLevel world : ClientWorldLoader.getClientWorlds()) {
                     LevelRenderer worldRenderer =
                         ClientWorldLoader.getWorldRenderer(world.dimension());
-                    ViewArea viewArea = ((IEWorldRenderer) worldRenderer).ip_getBuiltChunkStorage();
+                    if (!(worldRenderer instanceof IEWorldRenderer ieWorldRenderer)) {
+                        continue;
+                    }
+                    ViewArea viewArea = ieWorldRenderer.ip_getBuiltChunkStorage();
                     if (viewArea instanceof ImmPtlViewArea immPtlViewArea) {
                         immPtlViewArea.tick();
                     }

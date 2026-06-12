@@ -47,6 +47,10 @@ public class FogRendererContext {
     }
     
     public static void update() {
+        if (swappingManager == null) {
+            return;
+        }
+
         swappingManager.setOuterDimension(RenderStates.originalPlayerDimension);
         swappingManager.resetChecks();
         if (ClientWorldLoader.getIsInitialized()) {
@@ -103,7 +107,9 @@ public class FogRendererContext {
     }
     
     public static void onPlayerTeleport(ResourceKey<Level> from, ResourceKey<Level> to) {
-        swappingManager.updateOuterDimensionAndChangeContext(to);
+        if (swappingManager != null) {
+            swappingManager.updateOuterDimensionAndChangeContext(to);
+        }
     }
     
 }
