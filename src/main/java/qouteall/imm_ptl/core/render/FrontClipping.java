@@ -1,12 +1,14 @@
 package qouteall.imm_ptl.core.render;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
 import org.lwjgl.opengl.GL11;
+import org.slf4j.Logger;
 import qouteall.imm_ptl.core.CHelper;
 import qouteall.imm_ptl.core.IPCGlobal;
 import qouteall.imm_ptl.core.IPGlobal;
@@ -15,6 +17,7 @@ import qouteall.imm_ptl.core.render.context_management.PortalRendering;
 import qouteall.q_misc_util.my_util.Plane;
 
 public class FrontClipping {
+    private static final Logger LOGGER = LogUtils.getLogger();
     private static final Minecraft client = Minecraft.getInstance();
     private static double[] activeClipPlaneEquationBeforeModelView;
     private static double[] activeClipPlaneAfterModelView;
@@ -22,6 +25,73 @@ public class FrontClipping {
     public static boolean isClippingEnabled = false;
     
     public static final double ADJUSTMENT = 0.01;
+    private static Plane activeMinimalCpuClippingPlane;
+    private static boolean loggedMinimalClippingAttempt;
+    private static boolean loggedMinimalClippingPlan;
+    private static boolean loggedMinimalClippingApplied;
+    private static boolean loggedMinimalClippingFallback;
+    private static boolean loggedMinimalPortalCulled;
+
+    public static boolean beginMinimalCpuClipping() {
+        if (!loggedMinimalClippingAttempt) {
+            loggedMinimalClippingAttempt = true;
+            LOGGER.info("Minimal destination clipping attempted: true");
+        }
+
+        Plane clippingPlane = PortalRendering.getActiveClippingPlane();
+        if (clippingPlane == null) {
+            activeMinimalCpuClippingPlane = null;
+            if (!loggedMinimalClippingFallback) {
+                loggedMinimalClippingFallback = true;
+                LOGGER.info("Minimal destination clipping fallback: active portal clipping plane is unavailable");
+            }
+            return false;
+        }
+
+        activeMinimalCpuClippingPlane = clippingPlane.move(-ADJUSTMENT);
+        if (!loggedMinimalClippingPlan) {
+            loggedMinimalClippingPlan = true;
+            LOGGER.info("Minimal destination clipping plane calculated: true ({})", clippingPlane);
+        }
+        if (!loggedMinimalClippingApplied) {
+            loggedMinimalClippingApplied = true;
+            LOGGER.info(
+                "Minimal destination clipping applied: CPU portal-entity prefilter only; " +
+                    "vanilla 26.1 shaders do not expose a global clip plane"
+            );
+        }
+        return true;
+    }
+
+    public static void endMinimalCpuClipping() {
+        activeMinimalCpuClippingPlane = null;
+    }
+
+    public static boolean shouldCullPortalEntityByMinimalClipping(Portal portal) {
+        Plane clippingPlane = activeMinimalCpuClippingPlane;
+        if (clippingPlane == null) {
+            return false;
+        }
+
+        Vec3 origin = portal.getOriginPos();
+        if (clippingPlane.getDistanceTo(origin) >= 0) {
+            return false;
+        }
+        for (Vec3 localVertex : portal.getFourVerticesLocal(0)) {
+            if (clippingPlane.getDistanceTo(origin.add(localVertex)) >= 0) {
+                return false;
+            }
+        }
+
+        if (!loggedMinimalPortalCulled) {
+            loggedMinimalPortalCulled = true;
+            LOGGER.info(
+                "Minimal destination clipping culled portal entity {} behind the active plane",
+                portal.getId()
+            );
+        }
+        return true;
+    }
     
     public static void disableClipping() {
         if (IPGlobal.enableClippingMechanism) {

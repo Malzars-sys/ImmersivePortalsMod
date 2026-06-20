@@ -30,6 +30,7 @@ import qouteall.imm_ptl.core.block_manipulation.BlockManipulationClient;
 import qouteall.imm_ptl.core.compat.iris_compatibility.IrisInterface;
 import qouteall.imm_ptl.core.compat.sodium_compatibility.SodiumInterface;
 import qouteall.imm_ptl.core.ducks.IEGameRenderer;
+import qouteall.imm_ptl.core.ducks.IECamera;
 import qouteall.imm_ptl.core.ducks.IEMinecraftClient;
 import qouteall.imm_ptl.core.ducks.IEParticleManager;
 import qouteall.imm_ptl.core.ducks.IEWorldRenderer;
@@ -64,6 +65,8 @@ public class MyGameRenderer {
     public static int vanillaTerrainSetupOverride = 0;
     
     public static boolean enablePortalCaveCulling = true;
+    public static boolean lastMinimalRecursiveRenderSucceeded = false;
+    private static boolean loggedVanillaFogFallback;
     
     public static void init() {
         IPCGlobal.CLIENT_CLEANUP_EVENT.register(() -> {
@@ -135,6 +138,8 @@ public class MyGameRenderer {
         DimensionRenderHelper helper =
             ClientWorldLoader.getDimensionRenderHelper(newDimension);
         Camera newCamera = new Camera();
+        ((IECamera) newCamera).ip_resetState(thisTickCameraPos, newWorld);
+        ((IECamera) newCamera).portal_setFocusedEntity(client.getCameraEntity());
         
         // store old state
         ClientLevel oldWorld = client.level;
@@ -142,6 +147,7 @@ public class MyGameRenderer {
         Lightmap oldLightmap = ieGameRenderer.ip_getLightmap();
         boolean oldNoClip = client.player.noPhysics;
         boolean oldDoRenderHand = ieGameRenderer.ip_getDoRenderHand();
+        Lightmap newLightmap = helper.lightmapTexture != null ? helper.lightmapTexture : oldLightmap;
         ObjectArrayList<SectionRenderDispatcher.RenderSection> oldChunkInfoList =
             ((IEWorldRenderer) oldWorldRenderer).portal_getChunkInfoList();
         HitResult oldCrosshairTarget = client.hitResult;
@@ -170,11 +176,20 @@ public class MyGameRenderer {
         // switch (note: it will no longer switch the world that client player is in )
         ((IEMinecraftClient) client).ip_setWorldRenderer(worldRenderer);
         client.level = newWorld;
-        ieGameRenderer.ip_setLightmapTextureManager(helper.lightmapTexture);
+        ieGameRenderer.ip_setLightmapTextureManager(newLightmap);
         
         client.player.noPhysics = true;
         
-        FogRendererContext.swappingManager.pushSwapping(newDimension);
+        boolean hasAdvancedFogContext = FogRendererContext.swappingManager != null;
+        if (hasAdvancedFogContext) {
+            FogRendererContext.swappingManager.pushSwapping(newDimension);
+        }
+        else if (!loggedVanillaFogFallback) {
+            loggedVanillaFogFallback = true;
+            qouteall.q_misc_util.Helper.LOGGER.info(
+                "Advanced fog context unavailable; using vanilla fog fallback"
+            );
+        }
         ((IEParticleManager) client.particleEngine).ip_setWorld(newWorld);
         if (BlockManipulationClient.remotePointedDim == newDimension) {
             client.hitResult = BlockManipulationClient.remoteHitResult;
@@ -222,7 +237,25 @@ public class MyGameRenderer {
         //invoke rendering
         invokeWrapper.accept(() -> {
             Profiler.get().push("render_portal_content");
-            // Recursive level rendering is deferred to the 26.1 LevelRenderer port.
+            lastMinimalRecursiveRenderSucceeded = false;
+            if (IPCGlobal.useMinimalRecursivePortalRendering && PortalRendering.getPortalLayer() == 1) {
+                limitedLogger.lInfo(
+                    qouteall.q_misc_util.Helper.LOGGER,
+                    "Beginning minimal recursive portal render in {}",
+                    newDimension.identifier()
+                );
+                try {
+                    client.gameRenderer.renderLevel(client.getDeltaTracker());
+                    lastMinimalRecursiveRenderSucceeded = true;
+                }
+                catch (Throwable throwable) {
+                    limitedLogger.lErr(
+                        qouteall.q_misc_util.Helper.LOGGER,
+                        "Minimal recursive portal render failed; using cyan frame fallback",
+                        throwable
+                    );
+                }
+            }
             Profiler.get().pop();
         });
         
@@ -241,7 +274,9 @@ public class MyGameRenderer {
         
         ((IEWorldRenderer) worldRenderer).portal_setTransparencyShader(oldTransparencyShader);
         
-        FogRendererContext.swappingManager.popSwapping();
+        if (hasAdvancedFogContext) {
+            FogRendererContext.swappingManager.popSwapping();
+        }
         
         ((IEWorldRenderer) oldWorldRenderer).portal_setChunkInfoList(oldChunkInfoList);
         VisibleSectionDiscovery.returnList(newChunkInfoList);

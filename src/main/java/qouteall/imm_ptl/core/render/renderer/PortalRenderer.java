@@ -8,9 +8,11 @@ import net.fabricmc.fabric.api.event.EventFactory;
 import net.minecraft.client.GraphicsPreset;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.phys.Vec3;
+import com.mojang.blaze3d.vertex.PoseStack;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
@@ -75,6 +77,18 @@ public abstract class PortalRenderer {
     
     // this will be called when rendering portal entities
     public abstract void renderPortalInEntityRenderer(Portal portal);
+
+    public void renderPortalInEntityRenderer(Portal portal, PoseStack poseStack) {
+        renderPortalInEntityRenderer(portal);
+    }
+
+    public void renderPortalInEntityRenderer(
+        Portal portal,
+        PoseStack poseStack,
+        SubmitNodeCollector submitNodeCollector
+    ) {
+        renderPortalInEntityRenderer(portal, poseStack);
+    }
     
     // return true to skip framebuffer clear
     // this will also be called in outer world rendering
@@ -326,6 +340,11 @@ public abstract class PortalRenderer {
         }
         
         IPModInfoChecking.checkShaderpack();
+
+        if (IPCGlobal.useMinimalRecursivePortalRendering) {
+            switchRenderer(IPCGlobal.rendererUsingFrameBuffer);
+            return;
+        }
         
         switch (IPGlobal.renderMode) {
             case normal -> switchRenderer(IPCGlobal.rendererUsingStencil);

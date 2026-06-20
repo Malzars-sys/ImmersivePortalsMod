@@ -8,7 +8,9 @@ import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.OrderedSubmitNodeCollector;
 import net.minecraft.client.renderer.chunk.SectionRenderDispatcher;
+import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
@@ -41,6 +43,7 @@ import static org.lwjgl.opengl.GL11.glReadPixels;
 public class MyRenderHelper {
     
     public static final Minecraft client = Minecraft.getInstance();
+    private static boolean loggedMinimalFramebufferQuadInfo;
     
     public static void init() {
         IPRenderPipelines.init();
@@ -52,8 +55,130 @@ public class MyRenderHelper {
         Matrix4f modelViewMatrix,
         Matrix4f projectionMatrix
     ) {
-        
-        // The textured portal-area pipeline is intentionally deferred.
+        // Legacy compatibility path. The vanilla minimal renderer submits through SubmitNodeCollector.
+        Vec3 cameraPos = CHelper.getCurrentCameraPos();
+        Vec3 center = portal.getOriginPos().subtract(cameraPos);
+        Vec3 halfW = portal.getAxisW().scale(portal.getWidth() * 0.5);
+        Vec3 halfH = portal.getAxisH().scale(portal.getHeight() * 0.5);
+        Vec3 p0 = center.add(halfW).add(halfH);
+        Vec3 p1 = center.subtract(halfW).add(halfH);
+        Vec3 p2 = center.subtract(halfW).subtract(halfH);
+        Vec3 p3 = center.add(halfW).subtract(halfH);
+
+        drawPortalAreaWithFramebuffer(textureProvider, p0, p1, p2, p3);
+    }
+
+    private static void drawPortalAreaWithFramebuffer(
+        RenderTarget textureProvider,
+        Vec3 p0,
+        Vec3 p1,
+        Vec3 p2,
+        Vec3 p3
+    ) {
+        if (!loggedMinimalFramebufferQuadInfo) {
+            loggedMinimalFramebufferQuadInfo = true;
+            qouteall.q_misc_util.Helper.log(
+                "Minimal recursive portal framebuffer quad vertices=%s %s %s %s fb=%dx%d window=%dx%d".formatted(
+                    p0, p1, p2, p3,
+                    textureProvider.width, textureProvider.height,
+                    client.getWindow().getWidth(), client.getWindow().getHeight()
+                )
+            );
+        }
+
+        BufferBuilder bufferBuilder = Tesselator.getInstance()
+            .begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_TEX);
+        putTexturedVertex(bufferBuilder, p0, 1, 1);
+        putTexturedVertex(bufferBuilder, p1, 0, 1);
+        putTexturedVertex(bufferBuilder, p2, 0, 0);
+        putTexturedVertex(bufferBuilder, p0, 1, 1);
+        putTexturedVertex(bufferBuilder, p2, 0, 0);
+        putTexturedVertex(bufferBuilder, p3, 1, 0);
+
+        IPRenderPipelines.drawTexturedMesh(
+            IPRenderPipelines.Slot.DRAW_FRAMEBUFFER_IN_AREA,
+            bufferBuilder.buildOrThrow(),
+            textureProvider.getColorTextureView()
+        );
+    }
+
+    private static void putTexturedVertex(BufferBuilder builder, Vec3 pos, float u, float v) {
+        builder.addVertex((float) pos.x, (float) pos.y, (float) pos.z).setUv(u, v);
+    }
+
+    public static void submitPortalAreaWithFramebuffer(
+        Portal portal,
+        com.mojang.blaze3d.vertex.PoseStack poseStack,
+        OrderedSubmitNodeCollector submitNodeCollector,
+        RenderType renderType
+    ) {
+        // Render-graph path used by the consolidated vanilla minimal renderer.
+        Vec3 halfW = portal.getAxisW().scale(portal.getWidth() * 0.5);
+        Vec3 halfH = portal.getAxisH().scale(portal.getHeight() * 0.5);
+        Vec3 p0 = halfW.add(halfH);
+        Vec3 p1 = halfW.scale(-1).add(halfH);
+        Vec3 p2 = halfW.scale(-1).subtract(halfH);
+        Vec3 p3 = halfW.subtract(halfH);
+
+        submitNodeCollector.submitCustomGeometry(
+            poseStack,
+            renderType,
+            (pose, vertexConsumer) -> {
+                putSubmittedTexturedVertex(vertexConsumer, pose, p0, 1, 1);
+                putSubmittedTexturedVertex(vertexConsumer, pose, p1, 0, 1);
+                putSubmittedTexturedVertex(vertexConsumer, pose, p2, 0, 0);
+                putSubmittedTexturedVertex(vertexConsumer, pose, p0, 1, 1);
+                putSubmittedTexturedVertex(vertexConsumer, pose, p2, 0, 0);
+                putSubmittedTexturedVertex(vertexConsumer, pose, p3, 1, 0);
+            }
+        );
+    }
+
+    public static void submitPortalDepthMask(
+        Portal portal,
+        com.mojang.blaze3d.vertex.PoseStack poseStack,
+        OrderedSubmitNodeCollector submitNodeCollector,
+        RenderType renderType
+    ) {
+        Vec3 halfW = portal.getAxisW().scale(portal.getWidth() * 0.5);
+        Vec3 halfH = portal.getAxisH().scale(portal.getHeight() * 0.5);
+        Vec3 p0 = halfW.add(halfH);
+        Vec3 p1 = halfW.scale(-1).add(halfH);
+        Vec3 p2 = halfW.scale(-1).subtract(halfH);
+        Vec3 p3 = halfW.subtract(halfH);
+
+        submitNodeCollector.submitCustomGeometry(
+            poseStack,
+            renderType,
+            (pose, vertexConsumer) -> {
+                putSubmittedDepthVertex(vertexConsumer, pose, p0);
+                putSubmittedDepthVertex(vertexConsumer, pose, p1);
+                putSubmittedDepthVertex(vertexConsumer, pose, p2);
+                putSubmittedDepthVertex(vertexConsumer, pose, p0);
+                putSubmittedDepthVertex(vertexConsumer, pose, p2);
+                putSubmittedDepthVertex(vertexConsumer, pose, p3);
+            }
+        );
+    }
+
+    private static void putSubmittedTexturedVertex(
+        com.mojang.blaze3d.vertex.VertexConsumer vertexConsumer,
+        com.mojang.blaze3d.vertex.PoseStack.Pose pose,
+        Vec3 pos,
+        float u,
+        float v
+    ) {
+        vertexConsumer.addVertex(pose.pose(), (float) pos.x, (float) pos.y, (float) pos.z)
+            .setUv(u, v);
+    }
+
+    private static void putSubmittedDepthVertex(
+        com.mojang.blaze3d.vertex.VertexConsumer vertexConsumer,
+        com.mojang.blaze3d.vertex.PoseStack.Pose pose,
+        Vec3 pos
+    ) {
+        vertexConsumer.addVertex(pose.pose(), (float) pos.x, (float) pos.y, (float) pos.z)
+            .setColor(0xffffffff);
     }
     
     public static void renderScreenTriangle() {

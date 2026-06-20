@@ -8,6 +8,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.datafixers.util.Pair;
+import com.mojang.logging.LogUtils;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
@@ -44,6 +45,7 @@ import net.minecraft.world.level.chunk.DataLayer;
 import net.minecraft.world.level.chunk.EmptyLevelChunk;
 import net.minecraft.world.level.entity.EntityTickList;
 import net.minecraft.world.phys.Vec3;
+import org.slf4j.Logger;
 import qouteall.imm_ptl.core.CHelper;
 import qouteall.imm_ptl.core.ClientWorldLoader;
 import qouteall.imm_ptl.core.IPCGlobal;
@@ -77,10 +79,12 @@ import java.util.stream.Collectors;
 
 @Environment(EnvType.CLIENT)
 public class ClientDebugCommand {
+    private static final Logger LOGGER = LogUtils.getLogger();
     
     public static void register(
         CommandDispatcher<FabricClientCommandSource> dispatcher
     ) {
+        LOGGER.info("Registering ImmPtlClientDebugCommands");
         LiteralArgumentBuilder<FabricClientCommandSource> builder = ClientCommands
             .literal("imm_ptl_client_debug")
             .requires(commandSource -> true)
@@ -233,9 +237,9 @@ public class ClientDebugCommand {
                 }
 
                 Vec3 eyeOffset = McHelper.getEyeOffset(player);
-                Vec3 startEyePos = portal.getOriginPos().subtract(portal.getNormal().scale(0.25));
+                Vec3 startEyePos = portal.getOriginPos().add(portal.getNormal().scale(0.25));
                 Vec3 startFeetPos = startEyePos.subtract(eyeOffset);
-                Vec3 traversalVelocity = portal.getNormal().scale(0.7);
+                Vec3 traversalVelocity = portal.getNormal().scale(-0.7);
                 MinecraftServer server = Minecraft.getInstance().getSingleplayerServer();
                 if (server == null) {
                     context.getSource().sendFeedback(Component.literal(

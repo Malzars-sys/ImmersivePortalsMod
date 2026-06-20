@@ -3,28 +3,23 @@ package qouteall.imm_ptl.core.mixin.client.render;
 import net.minecraft.client.Camera;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.level.BlockGetter;
-import net.minecraft.world.level.material.FogType;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import qouteall.imm_ptl.core.ducks.IECamera;
-import qouteall.imm_ptl.core.render.CrossPortalEntityRenderer;
-import qouteall.imm_ptl.core.render.context_management.PortalRendering;
-import qouteall.imm_ptl.core.render.context_management.WorldRenderInfo;
 
+/**
+ * Minimal vanilla-profile bridge for the camera state used by portal views.
+ *
+ * <p>Legacy fog and detached-camera injections intentionally remain isolated.</p>
+ */
 @Mixin(Camera.class)
 public abstract class MixinCamera implements IECamera {
-//    private static float lastClipSpaceResult = 1;
-    
     @Shadow
     private Vec3 position;
     @Shadow
-    private BlockGetter level;
+    private Level level;
     @Shadow
     private Entity entity;
     @Shadow
@@ -34,40 +29,6 @@ public abstract class MixinCamera implements IECamera {
     
     @Shadow
     protected abstract void setPosition(Vec3 vec3d_1);
-    
-    @Inject(
-        method = "Lnet/minecraft/client/Camera;getFluidInCamera()Lnet/minecraft/world/level/material/FogType;",
-        at = @At("HEAD"),
-        cancellable = true
-    )
-    private void getSubmergedFluidState(CallbackInfoReturnable<FogType> cir) {
-        if (PortalRendering.isRendering()) {
-            cir.setReturnValue(FogType.NONE);
-            cir.cancel();
-        }
-    }
-    
-//    @Inject(method = "getMaxZoom", at = @At("HEAD"), cancellable = true)
-//    private void onGetMaxZoomHead(float f, CallbackInfoReturnable<Float> cir) {
-//        if (PortalRendering.isRendering()) {
-//            cir.setReturnValue(lastClipSpaceResult);
-//            cir.cancel();
-//        }
-//    }
-//
-//    // TODO using global variable to pass may be problematic when multiple camera objects are used
-//    @Inject(method = "getMaxZoom", at = @At("RETURN"), cancellable = true)
-//    private void onGetMaxZoomReturn(float f, CallbackInfoReturnable<Float> cir) {
-//        lastClipSpaceResult = cir.getReturnValue();
-//    }
-    
-    // to let the player be rendered when rendering portal
-    @Inject(method = "Lnet/minecraft/client/Camera;isDetached()Z", at = @At("HEAD"), cancellable = true)
-    private void onIsThirdPerson(CallbackInfoReturnable<Boolean> cir) {
-        if (CrossPortalEntityRenderer.shouldRenderPlayerDefault()) {
-            cir.setReturnValue(true);
-        }
-    }
     
     @Override
     public void ip_resetState(Vec3 pos, ClientLevel currWorld) {

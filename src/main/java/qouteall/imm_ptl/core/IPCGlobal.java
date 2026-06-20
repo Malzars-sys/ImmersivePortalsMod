@@ -37,6 +37,12 @@ public class IPCGlobal {
     public static boolean experimentalIrisPortalRenderer = false;
     
     public static boolean debugEnableStencilWithIris = false;
+
+    /**
+     * Vanilla-only Phase 5.0 renderer. It renders one same-dimension portal
+     * view into a secondary target and keeps the cyan entity frame as fallback.
+     */
+    public static boolean useMinimalRecursivePortalRendering = true;
     
     /**
      * Fired when client exits world or doing conventional dimension travel (with loading screen).

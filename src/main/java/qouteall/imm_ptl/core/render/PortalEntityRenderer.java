@@ -46,7 +46,24 @@ public class PortalEntityRenderer<T extends Portal>
         SubmitNodeCollector submitNodeCollector,
         CameraRenderState cameraRenderState
     ) {
-        IPCGlobal.renderer.renderPortalInEntityRenderer(state.portal);
+        if (FrontClipping.shouldCullPortalEntityByMinimalClipping(state.portal)) {
+            return;
+        }
+        if (IPCGlobal.useMinimalRecursivePortalRendering) {
+            IPCGlobal.rendererUsingFrameBuffer.queueMinimalPortalFromEntityRenderer(state.portal);
+            IPCGlobal.rendererUsingFrameBuffer.renderPortalInEntityRenderer(
+                state.portal,
+                poseStack,
+                submitNodeCollector
+            );
+        }
+        else {
+            IPCGlobal.renderer.renderPortalInEntityRenderer(
+                state.portal,
+                poseStack,
+                submitNodeCollector
+            );
+        }
         submitMinimalPortalFrame(state, poseStack, submitNodeCollector);
         super.submit(state, poseStack, submitNodeCollector, cameraRenderState);
     }

@@ -1,5 +1,6 @@
 package qouteall.imm_ptl.core.commands;
 
+import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.FloatArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
@@ -8,12 +9,14 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.logging.LogUtils;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.DimensionArgument;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import net.minecraft.commands.arguments.coordinates.Vec3Argument;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
@@ -28,6 +31,7 @@ import net.minecraft.server.level.Ticket;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.util.profiling.ActiveProfiler;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
@@ -76,10 +80,76 @@ import static qouteall.imm_ptl.core.commands.PortalCommand.hasPermissionLevel;
 
 public class PortalDebugCommands {
     private static final Logger LOGGER = LogUtils.getLogger();
+
+    static void registerDevelopmentCommands(
+        CommandDispatcher<CommandSourceStack> dispatcher
+    ) {
+        if (!FabricLoader.getInstance().isDevelopmentEnvironment()) {
+            return;
+        }
+
+        LOGGER.info("Registering ImmPtl development commands");
+        dispatcher.register(Commands.literal("imm_ptl_debug")
+            .then(Commands.literal("create_minimal_test_portal")
+                .executes(context -> createMinimalTestPortal(
+                    context.getSource().getPlayerOrException(),
+                    false
+                ))
+            )
+            .then(Commands.literal("create_visible_test_portal")
+                .executes(context -> createMinimalTestPortal(
+                    context.getSource().getPlayerOrException(),
+                    true
+                ))
+            )
+        );
+    }
+
+    private static int createMinimalTestPortal(ServerPlayer player, boolean placePlayerFacingPortal) {
+        ServerLevel world = player.level();
+        Direction facing = player.getDirection();
+        Vec3 normal = Vec3.atLowerCornerOf(facing.getUnitVec3i());
+        Vec3 axisW = new Vec3(normal.z, 0, -normal.x);
+        Vec3 axisH = new Vec3(0, 1, 0);
+        Vec3 origin = player.position().add(normal.scale(4)).add(0, 1.5, 0);
+        Vec3 destination = origin.add(normal.scale(10));
+
+        Portal portal = Portal.ENTITY_TYPE.create(world, EntitySpawnReason.COMMAND);
+        if (portal == null) {
+            player.sendSystemMessage(Component.literal("Failed to create minimal test portal."));
+            return 0;
+        }
+
+        portal.setOriginPos(origin);
+        portal.setDestinationDimension(world.dimension());
+        portal.setDestination(destination);
+        portal.setOrientationAndSize(axisW, axisH, 2, 3);
+        portal.portalTag = "imm_ptl:minimal_test_portal";
+        McHelper.spawnServerEntity(portal);
+
+        if (placePlayerFacingPortal) {
+            Vec3 viewerPos = origin.subtract(normal.scale(5)).subtract(0, 1.5, 0);
+            player.connection.teleport(
+                viewerPos.x, viewerPos.y, viewerPos.z,
+                player.getYRot(), 0.0F
+            );
+            LOGGER.info(
+                "Placed player at {} facing visible minimal test portal at {}",
+                viewerPos, origin
+            );
+        }
+
+        LOGGER.info("Created minimal test portal at {} targeting {}", origin, destination);
+        player.sendSystemMessage(Component.literal(
+            "Created minimal test portal at %s targeting %s".formatted(origin, destination)
+        ));
+        return 1;
+    }
     
     static void registerDebugCommands(
         LiteralArgumentBuilder<CommandSourceStack> builder
     ) {
+        LOGGER.info("Registering PortalDebugCommands");
         
         builder.then(Commands
             .literal("gui_portal")

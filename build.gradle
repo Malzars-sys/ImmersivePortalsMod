@@ -194,7 +194,6 @@ processResources {
         if (project.vanilla_core_compile.equals('true')) {
             filter { line ->
                 if (line.contains('"client.render.MixinLevelRenderer_BeforeIris",')) return null
-                if (line.contains('"client.render.MixinLevelRenderer",')) return null
                 if (line.contains('"client.render.MixinLevelRenderer_Optional",')) return null
                 if (line.contains('"client.render.MixinLevelRenderer_ForceMainThreadRebuild",')) return null
                 if (line.contains('"client.render.optimization.MixinLevelRenderer_Clouds",')) return null
@@ -205,8 +204,6 @@ processResources {
                 if (line.contains('"client.render.MixinRenderSystem_Clipping",')) return null
                 if (line.contains('"client.render.MixinRenderSystem_Fog",')) return null
                 if (line.contains('"client.render.MixinGlStateManager",')) return null
-                if (line.contains('"client.render.MixinGameRenderer",')) return null
-                if (line.contains('"client.render.MixinCamera",')) return null
                 if (line.contains('"client.render.MixinMultiBufferSourceBufferSource",')) return null
                 if (line.contains('"client.render.MixinScreenEffectRenderer",')) return null
                 if (line.contains('"client.render.shader.MixinGameRenderer_Shaders",')) return null
@@ -216,7 +213,6 @@ processResources {
                 if (line.contains('"client.MixinAbstractClientPlayer",')) return null
                 if (line.contains('"client.MixinGlDebug",')) return null
                 if (line.contains('"client.MixinDebugScreenOverlay",')) return null
-                if (line.contains('"client.particle.MixinParticleEngine",')) return null
                 if (line.contains('"client.multiworld_awareness.MixinFogRenderer",')) return null
                 if (line.contains('"client.multiworld_awareness.MixinBiomeAmbientSoundPlayer",')) return null
                 if (line.contains('"common.portal_generation.MixinItemEntity_P",')) return null

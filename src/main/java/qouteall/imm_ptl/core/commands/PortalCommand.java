@@ -114,6 +114,7 @@ public class PortalCommand {
         CommandDispatcher<CommandSourceStack> dispatcher,
         CommandBuildContext ctx
     ) {
+        LOGGER.info("Registering PortalCommand");
         LiteralArgumentBuilder<CommandSourceStack> builder = Commands
             .literal("portal")
             .requires(PortalCommand::canUsePortalCommand);
@@ -146,6 +147,7 @@ public class PortalCommand {
         builder.then(euler);
         
         dispatcher.register(builder);
+        PortalDebugCommands.registerDevelopmentCommands(dispatcher);
     }
     
     public static boolean canUsePortalCommand(CommandSourceStack commandSource) {

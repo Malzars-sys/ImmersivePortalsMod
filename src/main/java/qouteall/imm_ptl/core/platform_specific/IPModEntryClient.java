@@ -1,8 +1,10 @@
 package qouteall.imm_ptl.core.platform_specific;
 
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.EntityType;
 import qouteall.imm_ptl.core.CHelper;
@@ -26,6 +28,14 @@ import qouteall.q_misc_util.Helper;
 import qouteall.q_misc_util.my_util.MyTaskList;
 
 public class IPModEntryClient implements ClientModInitializer {
+    private static final boolean AUTO_VISIBLE_TEST_PORTAL =
+        "true".equalsIgnoreCase(System.getenv("IMM_PTL_AUTO_VISIBLE_TEST_PORTAL"));
+    private static final boolean AUTO_MINIMAL_TRAVERSAL_TEST =
+        "true".equalsIgnoreCase(System.getenv("IMM_PTL_AUTO_MINIMAL_TRAVERSAL_TEST"));
+    private static boolean autoVisibleTestPortalCommandSent;
+    private static int autoVisibleTestPortalTicks;
+    private static boolean autoMinimalTraversalCommandSent;
+    private static int autoMinimalTraversalTicks;
     
     
     
@@ -56,6 +66,42 @@ public class IPModEntryClient implements ClientModInitializer {
         Helper.log("Vanilla core profile: Sodium and Iris compatibility disabled");
         
         IPModInfoChecking.initClient();
+
+        if (
+            FabricLoader.getInstance().isDevelopmentEnvironment() &&
+            (AUTO_VISIBLE_TEST_PORTAL || AUTO_MINIMAL_TRAVERSAL_TEST)
+        ) {
+            ClientTickEvents.END_CLIENT_TICK.register(IPModEntryClient::tickDevPortalTests);
+        }
+    }
+
+    private static void tickDevPortalTests(Minecraft client) {
+        if (client.level == null || client.player == null || client.getConnection() == null) {
+            autoVisibleTestPortalTicks = 0;
+            autoMinimalTraversalTicks = 0;
+            return;
+        }
+
+        if (AUTO_VISIBLE_TEST_PORTAL && !autoVisibleTestPortalCommandSent) {
+            autoVisibleTestPortalTicks++;
+            if (autoVisibleTestPortalTicks >= 60) {
+                autoVisibleTestPortalCommandSent = true;
+                Helper.log("Running dev auto visible test portal command");
+                client.getConnection().sendCommand("imm_ptl_debug create_visible_test_portal");
+            }
+        }
+
+        if (AUTO_MINIMAL_TRAVERSAL_TEST && !autoMinimalTraversalCommandSent) {
+            autoMinimalTraversalTicks++;
+            int delay = AUTO_VISIBLE_TEST_PORTAL ? 140 : 80;
+            if (autoMinimalTraversalTicks >= delay) {
+                autoMinimalTraversalCommandSent = true;
+                Helper.log("Running dev auto minimal portal traversal command");
+                client.getConnection().sendCommand(
+                    "imm_ptl_client_debug test_minimal_portal_traversal"
+                );
+            }
+        }
     }
     
 }

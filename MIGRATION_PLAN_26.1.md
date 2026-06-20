@@ -616,6 +616,25 @@ Un crash découvert pendant le test a été corrigé dans le rendu minimal :
 Le stacktrace complet est conservé dans
 `run/crash-reports/crash-2026-06-12_15.13.43-client.txt`.
 
+### 4.8 Audit des commandes
+
+Statut : terminé le 12 juin 2026.
+
+- `compileJava` vanilla : réussi, 0 erreur
+- `runClient` vanilla : réussi
+- `PortalCommand` enregistré : oui
+- `PortalDebugCommands` enregistré sous `/portal debug` : oui
+- `ClientDebugCommand` enregistré sous `/imm_ptl_client_debug` : oui
+- commandes exclues par le profil vanilla : non
+- crash final : non
+
+Les trois callbacks sont confirmés par des logs runtime explicites. `/portal`
+est masqué pour le joueur de test car celui-ci est en survie sans permission
+opérateur. `easeCreativePermission=true` autorise seulement les joueurs en
+créatif. `/imm_ptl_client_debug` reste disponible pour tous les clients.
+
+Le rapport complet est `PHASE4.8_COMMAND_AUDIT.md`.
+
 ## Phase 4 - Réactivation Sodium puis Iris
 
 Ordre strict :
@@ -651,3 +670,602 @@ Critères de sortie :
 
 Tester la création et la traversée minimale d'un portail avec le profil
 vanilla avant toute réactivation de Sodium, Iris ou DimLib.
+
+### 4.9 Portail de test serveur minimal
+
+Statut : terminé le 12 juin 2026.
+
+- `compileJava` vanilla : réussi, 0 erreur
+- `runClient` vanilla : réussi sur deux lancements
+- commande : `/imm_ptl_debug create_minimal_test_portal`
+- utilisable en survie solo sans permission opérateur : oui
+- portail présent côté client et cadre cyan visible : oui
+- traversée Overworld vers Overworld : oui
+- sauvegarde et rechargement : réussis
+- régression de `test_minimal_portal_traversal` : aucune
+- `Duplicate entity UUID` dans le monde propre : 0
+- crash final : non
+
+La commande est réservée aux environnements de développement et utilise
+`McHelper.spawnServerEntity`, donc le chemin serveur de sauvegarde et
+synchronisation déjà validé. Le monde propre `Phase49Test`, sans anciennes
+données d'entités, ne reproduit pas les avertissements UUID de
+`Phase43Test3`.
+
+Rapport : `PHASE4.9_MINIMAL_TEST_PORTAL.md`.
+
+### 5.0 Rendu récursif minimal vanilla
+
+Statut : terminé avec blocage technique documenté le 12 juin 2026.
+
+- `compileJava` vanilla : réussi, 0 erreur
+- `runClient` vanilla : réussi sur deux lancements
+- portail client et cadre cyan fallback : fonctionnels
+- traversée Overworld vers Overworld : fonctionnelle
+- sauvegarde/rechargement : réussi
+- `Duplicate entity UUID` : 0
+- première vue destination visible : non
+- crash final : non
+
+Le chemin framebuffer minimal, limité à une récursion et à la dimension
+courante, est préparé. Son exécution est cependant bloquée proprement car le
+profil vanilla exclut `MixinGameRenderer` dans `build.gradle`. Sans ce mixin,
+`GameRenderer` n'implémente pas `IEGameRenderer`, interface requise pour
+changer la caméra, la lightmap et le contexte de rendu. Le renderer détecte
+ce cas et conserve le cadre cyan avec un log de fallback non spammy.
+
+Rapport : `PHASE5.0_MINIMAL_RECURSIVE_RENDERING.md`.
+
+### 5.1 Activation minimale de MixinGameRenderer
+
+Statut : termine avec nouveau blocage technique documente le 12 juin 2026.
+
+- `compileJava` vanilla : reussi, 0 erreur
+- `runClient` vanilla final : reussi sur deux lancements, aucun crash
+- `IEGameRenderer` actif au runtime : oui
+- portail client et cadre cyan fallback : fonctionnels
+- traversee Overworld vers Overworld : fonctionnelle
+- sauvegarde/rechargement : reussi
+- `Duplicate entity UUID` : 0
+- premiere vue destination visible : non
+
+Le filtre vanilla de `build.gradle` ne retire plus `MixinGameRenderer`.
+Le mixin a ete reduit a une facade `IEGameRenderer` sans anciennes injections
+de rendu ou de shaders. Le chemin recursif depasse donc le blocage de la phase
+5.0, puis s'arrete proprement sur le nouveau blocage exact : `MixinCamera`
+reste isole et la camera vanilla n'implemente pas `IECamera`.
+
+Rapport : `PHASE5.1_ENABLE_GAME_RENDERER_MIXIN.md`.
+
+### 5.2 Activation minimale de MixinCamera
+
+Statut : termine avec nouveau blocage technique documente le 12 juin 2026.
+
+- `compileJava` et `processResources` : reussis
+- `runClient` vanilla final : reussi sur deux lancements, aucun crash
+- `IEGameRenderer` actif au runtime : oui
+- `IECamera` actif au runtime : oui
+- portail client et cadre cyan fallback : fonctionnels
+- sauvegarde/rechargement : reussi
+- `Duplicate entity UUID` : 0
+- premiere vue destination visible : non
+
+Le filtre vanilla de `build.gradle` ne retire plus `MixinCamera`. Le mixin a
+ete reduit a la facade `IECamera`, sans injections historiques de fog ou de
+camera detachee. Le rendu recursif depasse le blocage camera, puis s'arrete
+proprement sur le nouveau blocage exact : `MixinLevelRenderer` reste isole et
+`LevelRenderer` n'implemente pas `IEWorldRenderer`.
+
+Rapport : `PHASE5.2_ENABLE_CAMERA_MIXIN.md`.
+
+### 5.3 Activation minimale de MixinLevelRenderer
+
+Statut : termine avec nouveau blocage technique documente le 13 juin 2026.
+
+- `compileJava` et `processResources` : reussis
+- `runClient` vanilla final : reussi sur deux lancements, aucun crash
+- `IEGameRenderer` actif au runtime : oui
+- `IECamera` actif au runtime : oui
+- `IEWorldRenderer` actif au runtime : oui
+- portail client et cadre cyan fallback : fonctionnels
+- sauvegarde/rechargement : reussi
+- `Duplicate entity UUID` : 0
+- premiere vue destination visible : non
+
+Le filtre vanilla de `build.gradle` ne retire plus `MixinLevelRenderer`. Le
+mixin a ete remplace par une facade `IEWorldRenderer` sans injections
+historiques de rendu. Le chemin recursif depasse le blocage LevelRenderer,
+puis s'arrete proprement sur le nouveau blocage exact : le contexte fog
+avance reste isole et `FogRendererContext.swappingManager` n'est pas
+initialise.
+
+Rapport : `PHASE5.3_ENABLE_LEVEL_RENDERER_MIXIN.md`.
+
+### 5.4 Fallback fog vanilla minimal
+
+Statut : termine avec nouveau blocage technique documente le 13 juin 2026.
+
+- `compileJava` et `processResources` : reussis
+- `runClient` vanilla final : BUILD SUCCESSFUL, aucun crash
+- `IEGameRenderer`, `IECamera` et `IEWorldRenderer` actifs : oui
+- fallback fog vanilla : actif lorsque le contexte avance est absent
+- portail client et cadre cyan fallback : fonctionnels
+- traversee Overworld vers Overworld : observee deux fois
+- sauvegarde a la fermeture : reussie
+- `Duplicate entity UUID` : 0
+- premiere vue destination visible : non
+
+Le chemin recursif depasse maintenant le blocage
+`FogRendererContext.swappingManager` sans reactiver les mixins fog. Lorsque le
+contexte avance est absent, le fog vanilla courant est conserve. Le nouveau
+blocage exact est `MixinParticleEngine`, encore isole du profil vanilla :
+`ParticleEngine` n'implemente donc pas `IEParticleManager`. Une garde preflight
+conserve le fallback cyan sans crash ni mutation partielle du contexte client.
+
+Rapport : `PHASE5.4_FOG_FALLBACK.md`.
+
+### 5.5 Activation minimale de MixinParticleEngine
+
+Statut : termine avec nouveau blocage technique documente le 18 juin 2026.
+
+- `compileJava` et `processResources` : reussis
+- `runClient` vanilla final : BUILD SUCCESSFUL, aucun crash
+- `IEGameRenderer`, `IECamera`, `IEWorldRenderer` actifs : oui
+- `IEParticleManager` actif : oui
+- fallback fog vanilla : conserve
+- portail client et cadre cyan fallback : fonctionnels
+- sauvegarde a la fermeture : reussie
+- `Duplicate entity UUID` : 0
+- premiere vue destination visible : non
+
+Le filtre vanilla de `build.gradle` ne retire plus
+`client.particle.MixinParticleEngine`. Le mixin a ete reduit a une facade
+`IEParticleManager` minimale, avec uniquement le changement temporaire de monde
+du `ParticleEngine`. Le chemin recursif depasse le blocage particules, puis
+echoue proprement dans `GameRenderer.lightmap(...)` car le champ runtime
+`Lightmap` de `GameRenderer` est nul pendant le rendu recursif minimal. Le
+fallback cyan capture l'echec sans crash.
+
+Rapport : `PHASE5.5_ENABLE_PARTICLE_ENGINE_MIXIN.md`.
+
+### 5.6 Etat Lightmap runtime du rendu recursif minimal
+
+Statut : termine avec nouveau blocage technique documente le 18 juin 2026.
+
+- `compileJava` et `processResources` : reussis
+- `runClient` vanilla final : BUILD SUCCESSFUL, aucun crash
+- `IEGameRenderer`, `IECamera`, `IEWorldRenderer` actifs : oui
+- `IEParticleManager` actif : oui
+- lightmap runtime valide pendant le preflight recursif : oui
+- portail client et cadre cyan fallback : fonctionnels
+- sauvegarde a la fermeture : reussie
+- `Duplicate entity UUID` : 0
+- premiere vue destination visible : non
+
+`GameRenderer` 26.1 possede un champ `private final Lightmap lightmap`,
+initialise dans son constructeur et utilise par `lightmap()` /
+`levelLightmap()`. Le crash venait du cas Overworld vers Overworld :
+`DimensionRenderHelper.lightmapTexture` vaut volontairement `null` pour le
+monde principal, et `MyGameRenderer` passait ce `null` a la facade
+`IEGameRenderer`. Le rendu recursif reutilise maintenant le lightmap principal
+quand aucun lightmap de dimension dedie n'existe.
+
+Le chemin a ensuite expose le nouveau blocage exact :
+`LevelRenderer.submitEntities` n'est pas reentrant lorsque le rendu recursif
+est declenche depuis `PortalEntityRenderer.submit`. Ce chemin est donc garde en
+fallback explicite jusqu'a deplacer le rendu recursif vers un hook plus sur.
+
+Rapport : `PHASE5.6_LIGHTMAP_RUNTIME_STATE.md`.
+
+### 5.7 Hook de rendu non reentrant
+
+Statut : termine avec nouveau blocage technique documente le 18 juin 2026.
+
+- `compileJava` et `processResources` : reussis
+- `runClient` vanilla final : BUILD SUCCESSFUL, aucun crash
+- `ConcurrentModificationException` : 0
+- portail client et cadre cyan fallback : conserves
+- sauvegarde a la fermeture : reussie
+- `Duplicate entity UUID` : 0
+- premiere vue destination visible : non
+
+`PortalEntityRenderer.submit` ne lance plus directement le rendu recursif. Il
+collecte seulement un portail candidat. Un hook minimal dans
+`MixinGameRenderer.renderLevel` tente ensuite le rendu framebuffer au debut
+d'une frame, hors de l'iteration `LevelRenderer.submitEntities`.
+
+Le deplacement elimine le blocage de reentrance. Le nouveau blocage exact est
+le blit du framebuffer secondaire vers la cible principale : dans ce hook, le
+pipeline GPU 26.1 peut avoir un buffer deja ferme (`Buffer already closed`).
+L'echec est capture et ramene au fallback cyan sans crash.
+
+Rapport : `PHASE5.7_NON_REENTRANT_RENDER_HOOK.md`.
+
+### 5.8 Blit framebuffer GPU 26.1
+
+Statut : termine avec correctif minimal applique le 18 juin 2026.
+
+- `compileJava` et `processResources` : reussis
+- `runClient` vanilla final : BUILD SUCCESSFUL, aucun crash
+- `runClient --quickPlaySingleplayer=Phase50Test` : BUILD SUCCESSFUL, monde charge
+- `ConcurrentModificationException` : 0
+- `Buffer already closed` : 0 dans les logs de validation apres correctif
+- `Duplicate entity UUID` : 0
+- portail client et cadre cyan fallback : conserves
+- Sodium, Iris, DimLib, shaders, fog mixins et clipping mixins : non touches
+- premiere vue destination visible : pas encore confirmee automatiquement
+
+La cause du blocage etait dans `IPRenderPipelines.drawMesh`. Les buffers
+retournes par `VertexFormat.uploadImmediateVertexBuffer(...)` et
+`uploadImmediateIndexBuffer(...)` sont les buffers immediats internes de Mojang,
+caches et reutilises par le `VertexFormat`. Immersive Portals les fermait apres
+le draw avec un try-with-resources, donc l'upload suivant pouvait ecrire dans un
+`GpuBuffer` deja ferme.
+
+Le correctif ferme maintenant uniquement le `MeshData`, qui reste propriete du
+draw appelant. Les `GpuBuffer` immediats restent geres par Mojang. Des logs
+uniques indiquent maintenant la tentative, le succes ou l'echec du blit
+framebuffer minimal.
+
+Les tests automatises chargent le monde et confirment l'absence de crash et de
+`Buffer already closed`. La tentative d'injection clavier de
+`/imm_ptl_debug create_minimal_test_portal` n'a pas ete confirmee dans les logs,
+donc l'apparition visuelle de la vue destination reste a revalider manuellement
+avec le portail dans le champ.
+
+Rapport : `PHASE5.8_FRAMEBUFFER_BLIT_GPU_PIPELINE.md`.
+
+### 5.9 Validation controlee du rendu recursif minimal
+
+Statut : termine avec validation runtime controlee le 18 juin 2026.
+
+- `compileJava` et `processResources` : reussis
+- `runClient --quickPlaySingleplayer=Phase50Test` : BUILD SUCCESSFUL
+- portail cree explicitement par commande dev : oui
+- joueur place face au portail : oui
+- portail collecte par `PortalEntityRenderer` : oui
+- rendu declenche depuis le hook `GameRenderer.renderLevel` : oui
+- tentative de blit framebuffer : oui
+- blit framebuffer reussi : oui
+- `Buffer already closed` : 0
+- `ConcurrentModificationException` : 0
+- `Duplicate entity UUID` : 0
+- Sodium, Iris, DimLib, shaders, fog mixins et clipping mixins : non touches
+
+Une commande de developpement a ete ajoutee :
+`/imm_ptl_debug create_visible_test_portal`. Elle cree un portail minimal et
+replace le joueur face a lui pour rendre le test reproductible.
+
+Un declencheur client dev optionnel a aussi ete ajoute pour les tests
+automatises :
+`IMM_PTL_AUTO_VISIBLE_TEST_PORTAL=true`. En environnement de developpement, il
+envoie `imm_ptl_debug create_visible_test_portal` apres quelques ticks en monde.
+
+Les logs valident toute la chaine runtime :
+`Queued minimal recursive portal from PortalEntityRenderer`,
+`Rendering minimal recursive portal from GameRenderer renderLevel hook`,
+`Attempting minimal recursive portal framebuffer blit`, puis
+`Minimal recursive portal framebuffer blit succeeded`.
+
+La capture visuelle automatique n'a pas ete utilisable car elle a pris une
+autre fenetre au premier plan. La preuve screenshot n'est donc pas retenue. La
+vue destination minimale est validee cote pipeline/logs jusqu'au blit reussi,
+mais l'inspection visuelle humaine fenetre Minecraft au premier plan reste a
+faire avant d'evaluer les artefacts de projection, profondeur, stencil ou
+clipping.
+
+Rapport : `PHASE5.9_VISUAL_RECURSIVE_RENDER_VALIDATION.md`.
+
+### 5.10 Inspection visuelle interactive du rendu recursif minimal
+
+Statut : termine avec preuve visuelle native Minecraft le 18 juin 2026.
+
+- `compileJava` et `processResources` : reussis
+- `runClient --quickPlaySingleplayer=Phase50Test` : BUILD SUCCESSFUL
+- portail cree automatiquement par commande dev : oui
+- joueur place face au portail : oui
+- portail collecte par `PortalEntityRenderer` : oui
+- rendu declenche depuis `GameRenderer.renderLevel` : oui
+- blit framebuffer tente : oui
+- blit framebuffer reussi : oui
+- capture Minecraft native obtenue : oui
+- `Buffer already closed` : 0
+- `ConcurrentModificationException` : 0
+- `Duplicate entity UUID` : 0
+- Sodium, Iris, DimLib, shaders, fog mixins et clipping mixins : non touches
+
+La capture native `run/screenshots/phase5.10-minimal-recursive-portal.png`
+confirme qu'une texture framebuffer destination est visible dans la zone du
+portail. La vue destination minimale est donc restauree au niveau pipeline.
+
+Artefacts observes :
+- image destination fortement retournee/inversee ;
+- mauvais cadrage ;
+- rendu visible dans un petit rectangle central ;
+- exterieur noir dans la capture native ;
+- clipping/profondeur non fiables ;
+- fog en fallback vanilla ;
+- une seule recursion.
+
+Le prochain micro-correctif prioritaire n'est pas Sodium/Iris ni stencil avance.
+Il faut d'abord corriger le cadrage/orientation du quad texture :
+ordre des sommets, UV, orientation Y du framebuffer et projection utilisee au
+moment du blit.
+
+Rapport : `PHASE5.10_VISUAL_ARTIFACT_AUDIT.md`.
+
+### 5.11 Orientation et cadrage du quad framebuffer
+
+Statut : termine avec blocage de cadrage documente le 18 juin 2026.
+
+- `compileJava` et `processResources` : reussis
+- `runClient --quickPlaySingleplayer=Phase50Test` : BUILD SUCCESSFUL
+- portail cree automatiquement par commande dev : oui
+- portail collecte par `PortalEntityRenderer` : oui
+- rendu destination declenche depuis `GameRenderer.renderLevel` : oui
+- blit framebuffer differe depuis `PortalEntityRenderer` : oui
+- blit framebuffer reussi : oui
+- capture Minecraft native obtenue : oui
+- `Buffer already closed` : 0
+- `ConcurrentModificationException` : 0
+- `Duplicate entity UUID` : 0
+- crash : non
+- Sodium, Iris, DimLib, shaders, fog mixins et clipping mixins : non touches
+
+Correctifs appliques :
+- inversion minimale des UV V du framebuffer ;
+- diagnostics uniques des quatre sommets du quad, de la taille framebuffer et de
+  la taille fenetre ;
+- nom de capture configurable via
+  `IMM_PTL_MINIMAL_RECURSIVE_PORTAL_SCREENSHOT` ;
+- routage explicite du mode minimal vers `rendererUsingFrameBuffer` ;
+- tentative de blit du quad depuis le chemin `PortalEntityRenderer`, apres rendu
+  non reentrant du framebuffer depuis le hook `GameRenderer`.
+
+Resultat visuel :
+- la texture framebuffer reste visible ;
+- le framebuffer secondaire a la bonne taille (`fb=854x480`, fenetre
+  `854x480`) ;
+- l'image n'est plus le meme petit rectangle central que Phase 5.10 ;
+- le quad texture reste mal cadre, projete en bande oblique sur le bord de
+  l'ecran ;
+- l'exterieur noir reste present dans la capture opt-in ;
+- clipping, profondeur et stencil restent volontairement incomplets.
+
+Cause restante :
+le quad framebuffer est encore dessine via un `RenderPass` immediat
+(`IPRenderPipelines.drawTexturedMesh`) et non comme vraie geometrie d'entite
+soumise par `SubmitNodeCollector`. Meme avec le `PoseStack` du renderer
+d'entite, ce draw immediat ne participe pas au meme graphe de rendu, au meme
+tri et au meme contexte de matrices que le cadre cyan vanilla.
+
+Prochaine etape recommandee :
+creer un pont minimal render-graph/SubmitNodeCollector capable de dessiner un
+quad d'entite avec une texture `GpuTextureView` de framebuffer, ou une petite
+abstraction equivalente compatible 26.1. Ne pas commencer Sodium/Iris/DimLib ni
+stencil avance avant ce pont.
+
+Rapport : `PHASE5.11_FRAMEBUFFER_QUAD_ORIENTATION.md`.
+
+### 5.12 Pont framebuffer vers SubmitNodeCollector
+
+Statut : termine avec pont render graph valide le 19 juin 2026.
+
+- `compileJava` et `processResources` : BUILD SUCCESSFUL
+- `runClient --quickPlaySingleplayer=Phase50Test` : BUILD SUCCESSFUL
+- portail collecte : oui
+- framebuffer destination rendu depuis le hook non reentrant : oui
+- texture framebuffer dynamique disponible : oui (`854x480`)
+- quad texture soumis via `SubmitNodeCollector` : oui
+- capture Minecraft native obtenue : oui
+- `Buffer already closed` : 0
+- `ConcurrentModificationException` : 0
+- `Duplicate entity UUID` : 0
+- crash : non
+- fallback/cadre cyan conserve : oui
+- Sodium, Iris, DimLib, shaders, fog mixins et clipping mixins : non touches
+
+Le pont utilise un alias `AbstractTexture` non proprietaire enregistre dans le
+`TextureManager` sous `imm_ptl:minimal_portal_framebuffer`. Un `RenderType`
+minimal resout cet identifiant et reutilise le pipeline
+`DRAW_FRAMEBUFFER_IN_AREA`. L'alias ne ferme jamais les ressources GPU possedees
+par le framebuffer secondaire.
+
+`PortalEntityRenderer.submit` transmet maintenant son `SubmitNodeCollector` au
+renderer minimal. Le quad `POSITION_TEX` est soumis avec les memes coins locaux
+et le meme `PoseStack` que le cadre cyan. Le rendu destination reste execute au
+HEAD de `GameRenderer.renderLevel`; aucune reentrance monde n'est introduite
+depuis le renderer d'entite.
+
+Resultat visuel : la bande oblique de Phase 5.11 a disparu. La texture
+destination est maintenant placee avec le rectangle du portail au centre de la
+vue. Les cadres cyan imbriques, le clipping absent, la profondeur imparfaite et
+le fog vanilla restent des limites volontaires du rendu minimal.
+
+Capture : `run/screenshots/phase5.12-submit-node-quad.png`.
+
+Rapport : `PHASE5.12_SUBMIT_NODE_FRAMEBUFFER_QUAD.md`.
+
+### 5.13 Clipping minimal vanilla du rendu destination
+
+Statut : termine avec prefiltrage CPU limite le 19 juin 2026.
+
+- `compileJava` et `processResources` : BUILD SUCCESSFUL
+- `runClient --quickPlaySingleplayer=Phase50Test` : BUILD SUCCESSFUL
+- portail collecte et framebuffer destination rendu : oui
+- texture framebuffer disponible : oui
+- quad texture `SubmitNodeCollector` conserve : oui
+- clipping minimal tente : oui
+- plan destination calcule : oui
+- prefiltrage CPU applique pendant le framebuffer : oui
+- une entite portail derriere le plan effectivement ignoree : oui
+- capture native obtenue : oui
+- `Buffer already closed` : 0
+- `ConcurrentModificationException` : 0
+- `Duplicate entity UUID` : 0
+- crash : non
+- cadre cyan fallback conserve : oui
+- Sodium, Iris, DimLib, shaders et mixins clipping/fog non touches
+
+Le fallback utilise `PortalRendering.getActiveClippingPlane()` uniquement
+pendant le rendu du framebuffer secondaire. `PortalEntityRenderer` ignore une
+entite portail seulement si son centre et ses quatre coins sont tous derriere
+le plan. L'etat est restaure dans un `finally`.
+
+La capture `run/screenshots/phase5.13-minimal-clipping.png` confirme que le pont
+framebuffer reste stable et qu'un portail hors demi-espace a ete filtre. La
+reduction visuelle reste modeste : les blocs, entites vanilla et portails du
+cote conserve ne sont pas decoupes.
+
+Limite exacte : les shaders vanilla 26.1 n'exposent pas de plan global et
+n'ecrivent pas `gl_ClipDistance`. `GL_CLIP_PLANE0` seul ne fournit donc plus de
+clipping general. Un vrai clipping de scene demandera plus tard un pipeline
+shader dedie ou un masque stencil/profondeur. `MixinRenderSystem_Clipping` n'a
+pas ete reactive.
+
+Rapport : `PHASE5.13_MINIMAL_FRONT_CLIPPING.md`.
+
+### 5.14 Audit et prototype de masque stencil/profondeur
+
+Statut : termine avec prototype profondeur valide le 19 juin 2026.
+
+- `compileJava` et `processResources` : BUILD SUCCESSFUL
+- `runClient --quickPlaySingleplayer=Phase50Test` : BUILD SUCCESSFUL
+- framebuffer destination et pont `SubmitNodeCollector` : conserves
+- profondeur cible principale : disponible
+- profondeur framebuffer secondaire : disponible
+- stencil utilisable via `RenderPipeline` : non
+- masque profondeur tente : oui
+- masque profondeur applique : oui
+- capture native obtenue : oui
+- `Buffer already closed` : 0
+- `ConcurrentModificationException` : 0
+- `Duplicate entity UUID` : 0
+- crash : non
+- cadre cyan fallback conserve : oui
+- Sodium, Iris, DimLib et ancien stencil avance non touches
+
+Le prototype utilise deux passes ordonnees dans le render graph :
+
+1. rectangle portail sans ecriture couleur, test profondeur
+   `LESS_THAN_OR_EQUAL`, ecriture profondeur active ;
+2. quad framebuffer avec test profondeur `EQUAL`, sans reecriture profondeur.
+
+Les deux passes utilisent les memes coins locaux et le meme `PoseStack`. Si la
+profondeur ou un pipeline manque, le renderer reprend automatiquement le quad
+non masque de Phase 5.12.
+
+Audit stencil : en 26.1, `DepthStencilState` ne contient que le test/ecriture de
+profondeur et le biais. Il n'expose aucune operation, reference ou masque
+stencil. Le chemin public `RenderPipeline` ne permet donc pas un stencil minimal
+isole dans ce profil.
+
+Resultat visuel : l'occlusion du quad contre la profondeur principale est
+explicite et stable, mais l'amelioration reste faible. Un masque rectangulaire
+ne peut pas retirer le contenu deja rendu dans la texture destination. Les
+cadres imbriques demandent encore un stencil integre ou un pipeline shader de
+clipping, tous deux hors scope.
+
+Capture : `run/screenshots/phase5.14-minimal-mask.png`.
+
+Rapport : `PHASE5.14_MINIMAL_STENCIL_DEPTH_MASK.md`.
+
+### 5.15 Consolidation du rendu minimal vanilla
+
+Statut : termine et stabilise le 20 juin 2026.
+
+- `compileJava` et `processResources` : BUILD SUCCESSFUL
+- run menu sans flags dev : BUILD SUCCESSFUL, menu atteint
+- run Phase50Test : BUILD SUCCESSFUL
+- framebuffer destination visible et pont `SubmitNodeCollector` : conserves
+- masque profondeur : conserve avec fallback
+- cadre cyan fallback : conserve
+- traversée Overworld vers Overworld : revalidee
+- `Client Teleported Statically` : observe deux fois
+- fermeture/sauvegarde puis rechargement : reussis
+- portail sauvegarde recollecte apres rechargement : oui
+- capture native differee obtenue : oui
+- `Buffer already closed` : 0
+- `ConcurrentModificationException` : 0
+- `Duplicate entity UUID` : 0
+- crash et crash fermeture : 0
+- Sodium, Iris, DimLib et rendu avance : non touches
+
+Nettoyage applique :
+- log du premier rendu recursif rendu strictement unique ;
+- separation documentee entre dessin immediat legacy et soumission vanilla ;
+- alias texture documente comme non proprietaire ;
+- nom de capture limite au basename avec fallback en cas de chemin invalide ;
+- capture opt-in differee de trois secondes pour laisser le portail test se
+  placer ;
+- ancien fallback de blit immediat decouple du chemin SubmitNode minimal.
+
+Flags de developpement verifies :
+- `IMM_PTL_AUTO_VISIBLE_TEST_PORTAL` : dev-only ;
+- `IMM_PTL_CAPTURE_MINIMAL_RECURSIVE_PORTAL` : capture opt-in unique ;
+- `IMM_PTL_MINIMAL_RECURSIVE_PORTAL_SCREENSHOT` : nom assaini ;
+- `IMM_PTL_AUTO_MINIMAL_TRAVERSAL_TEST` : nouveau pilote dev-only reproductible
+  de la commande de traversée existante.
+
+La commande de test traversée avait son sens inverse : elle partait derriere le
+portail vers la normale positive, alors que la forme rectangulaire accepte
+`local z > 0` vers `local z < 0`. Le pilote de test part maintenant devant le
+portail et se deplace contre la normale. Le gameplay de production n'est pas
+modifie.
+
+Audit GPU : un framebuffer secondaire singleton, un alias `AbstractTexture`
+enregistre une fois, aucun `GpuBuffer` immediat ferme par le mod, et `MeshData`
+ferme une fois sur le chemin de compatibilite. Aucune allocation persistante de
+texture ou `RenderType` par frame n'a ete identifiee.
+
+Rapport : `PHASE5.15_MINIMAL_RENDERER_STABILIZATION.md`.
+
+### 5.16 Decision technique : clipping shader vanilla ou Phase 6
+
+Statut : audit termine le 20 juin 2026.
+
+Decision : **Option C, puis Option B**.
+
+1. Figer le renderer minimal vanilla stable dans un commit de reference.
+2. Ouvrir ensuite une Phase 6.0 Sodium seul, avec un profil dedie.
+3. Attendre la stabilisation Sodium avant Iris.
+4. Garder DimLib et AlternateDimensions isoles.
+
+L'API 26.1 autorise des uniformes custom dans les pipelines controles par le
+mod, mais elle ne permet pas d'ajouter globalement un plan de clipping aux
+pipelines vanilla existants. Un pipeline dedie au quad final ne peut pas
+decouper le contenu deja rendu dans la texture destination.
+
+Un clipping general demanderait des variantes pour au moins le terrain, les
+blocs et block entities, les entites, les particules, le ciel/nuages, la meteo
+et les rendus speciaux. Cela revient a intercepter ou dupliquer une part
+importante du rendu monde, puis a refaire ce travail pour Sodium et Iris.
+
+La Phase 5.17 ne doit donc pas etre un chantier shader : elle sert au gel et au
+commit de la baseline vanilla. La Phase 6.0 recommandee reactive ensuite Sodium
+en compile-only, mixin par mixin, sans Iris ni DimLib. Iris attend Sodium ;
+DimLib attend une base 26.1 compatible ou un port dedie.
+
+Rapport : `PHASE5.16_RENDERING_DECISION_AUDIT.md`.
+
+### 5.17 Gel technique et commit de reference vanilla
+
+Statut : baseline preparee et validee le 20 juin 2026.
+
+- aucun nouveau code de rendu ajoute ;
+- renderer minimal, facades runtime et outils dev reproductibles selectionnes ;
+- rapports uniques des phases 4.8 a 5.17 inclus ;
+- copies, logs compile/run et diffs generes exclus ;
+- suppressions historiques de logs laissees hors commit ;
+- `compileJava` et `processResources` : BUILD SUCCESSFUL ;
+- mixins shader, fog et clipping complets toujours isoles ;
+- Sodium, Iris, DimLib et AlternateDimensions toujours inactifs.
+
+La baseline conserve une recursion, le framebuffer secondaire, le pont
+`SubmitNodeCollector`, le masque profondeur minimal et le cadre cyan fallback.
+Ses limites documentees sont le clipping general incomplet, l'absence de
+stencil public et le fog vanilla fallback.
+
+Commit de reference : `Stabilize vanilla minimal portal renderer baseline`.
+
+Rapport : `PHASE5.17_VANILLA_BASELINE_FREEZE.md`.
