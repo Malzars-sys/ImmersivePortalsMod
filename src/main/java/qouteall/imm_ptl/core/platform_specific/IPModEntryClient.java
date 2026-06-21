@@ -34,6 +34,8 @@ public class IPModEntryClient implements ClientModInitializer {
         "true".equalsIgnoreCase(System.getenv("IMM_PTL_AUTO_MINIMAL_TRAVERSAL_TEST"));
     private static boolean autoVisibleTestPortalCommandSent;
     private static int autoVisibleTestPortalTicks;
+    private static boolean loggedSodiumPortalPresence;
+    private static int sodiumPortalPresenceTicks;
     private static boolean autoMinimalTraversalCommandSent;
     private static int autoMinimalTraversalTicks;
     
@@ -63,7 +65,7 @@ public class IPModEntryClient implements ClientModInitializer {
         
         initPortalRenderers();
         
-        Helper.log("Vanilla core profile: Sodium and Iris compatibility disabled");
+        Helper.log("Vanilla core profile initialized; optional compatibility mixins are resource-profile controlled");
         
         IPModInfoChecking.initClient();
 
@@ -88,6 +90,24 @@ public class IPModEntryClient implements ClientModInitializer {
                 autoVisibleTestPortalCommandSent = true;
                 Helper.log("Running dev auto visible test portal command");
                 client.getConnection().sendCommand("imm_ptl_debug create_visible_test_portal");
+            }
+        }
+
+        if (
+            AUTO_VISIBLE_TEST_PORTAL && autoVisibleTestPortalCommandSent &&
+            FabricLoader.getInstance().isModLoaded("sodium") && !loggedSodiumPortalPresence
+        ) {
+            sodiumPortalPresenceTicks++;
+            if (sodiumPortalPresenceTicks >= 20) {
+                loggedSodiumPortalPresence = true;
+                boolean portalPresent = false;
+                for (var entity : client.level.entitiesForRendering()) {
+                    if (entity instanceof Portal) {
+                        portalPresent = true;
+                        break;
+                    }
+                }
+                Helper.log("Portal present client-side under Sodium: " + portalPresent);
             }
         }
 

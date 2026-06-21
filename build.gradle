@@ -1,3 +1,6 @@
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+
 plugins {
     id 'net.fabricmc.fabric-loom' version "${loom_version}"
 
@@ -9,6 +12,45 @@ plugins {
 
 version = project.mod_version
 group = project.maven_group
+
+def vanillaCoreCompile = project.vanilla_core_compile.equals('true')
+def sodiumCompatCompile = providers.gradleProperty('enable_sodium_compat')
+    .map { it.equalsIgnoreCase('true') }
+    .getOrElse(false)
+def sodiumRuntimeEnabled = sodiumCompatCompile && project.enable_sodium.equals('true')
+def sodiumCompatRuntimeGroup = providers.gradleProperty('sodium_compat_runtime_group')
+    .getOrElse('none')
+    .toUpperCase(Locale.ROOT)
+def sodiumRuntimeMixinsByGroup = [
+    A: [
+        'sodium.IESodiumWorldRenderer',
+        'sodium.MixinSodiumFlawlessFrames'
+    ],
+    B: [
+        'sodium.IESodiumWorldRenderer',
+        'sodium.MixinSodiumFlawlessFrames',
+        'sodium.MixinSodiumWorldRenderer',
+        'sodium.MixinSodiumViewport'
+    ],
+    C: [
+        'sodium.IESodiumWorldRenderer',
+        'sodium.MixinSodiumFlawlessFrames',
+        'sodium.MixinSodiumWorldRenderer',
+        'sodium.MixinSodiumViewport',
+        'sodium.MixinSodiumPortalEntityRenderer',
+        'sodium.MixinSodiumPortalLevelRenderer',
+        'sodium.MixinSodiumOcclusionCuller',
+        'sodium.MixinSodiumRenderRegion',
+        'sodium.MixinSodiumRenderSectionManager'
+    ]
+]
+if (!(sodiumCompatRuntimeGroup in ['NONE', 'A', 'B', 'C'])) {
+    throw new GradleException(
+        "Unknown sodium_compat_runtime_group '${sodiumCompatRuntimeGroup}'. Use none, A, B or C."
+    )
+}
+def sodiumRuntimeMixinsEnabled =
+    sodiumRuntimeEnabled && sodiumCompatRuntimeGroup != 'NONE'
 
 base {
     archivesName = project.archives_base_name
@@ -82,8 +124,11 @@ dependencies {
     compileOnly "maven.modrinth:modmenu:${modmenu_version}"
     runtimeOnly "maven.modrinth:modmenu:${modmenu_version}"
 
-    if (!project.vanilla_core_compile.equals('true')) {
+    if (!vanillaCoreCompile || sodiumCompatCompile) {
         compileOnly "${project.sodium_path}"
+    }
+
+    if (!vanillaCoreCompile) {
         compileOnly "${project.iris_path}"
     }
 
@@ -106,7 +151,10 @@ dependencies {
 
     // put these into inner mod to reduce duplicate MC jar
 
-    if (!project.vanilla_core_compile.equals('true') && project.enable_sodium.equals('true')) {
+    if (
+        (!vanillaCoreCompile || sodiumCompatCompile) &&
+        project.enable_sodium.equals('true')
+    ) {
         runtimeOnly "${project.sodium_path}"
     }
 
@@ -152,10 +200,9 @@ dependencies {
     testImplementation('org.junit.jupiter:junit-jupiter')
 }
 
-if (project.vanilla_core_compile.equals('true')) {
+if (vanillaCoreCompile) {
     sourceSets.main.java {
         exclude 'qouteall/imm_ptl/core/compat/mixin/iris/**'
-        exclude 'qouteall/imm_ptl/core/compat/mixin/sodium/**'
         exclude 'qouteall/imm_ptl/core/compat/iris_compatibility/ExperimentalIrisPortalRenderer.java'
         exclude 'qouteall/imm_ptl/core/compat/iris_compatibility/IEIrisNewWorldRenderingPipeline.java'
         exclude 'qouteall/imm_ptl/core/compat/iris_compatibility/IEIrisShadowRenderTargets.java'
@@ -163,8 +210,17 @@ if (project.vanilla_core_compile.equals('true')) {
         exclude 'qouteall/imm_ptl/core/compat/iris_compatibility/IrisCompatibilityPortalRenderer.java'
         exclude 'qouteall/imm_ptl/core/compat/iris_compatibility/IrisPortalRenderer.java'
         exclude 'qouteall/imm_ptl/core/compat/iris_compatibility/ShadowMapSwapper.java'
-        exclude 'qouteall/imm_ptl/core/compat/sodium_compatibility/IESodiumRenderSectionManager.java'
-        exclude 'qouteall/imm_ptl/core/compat/sodium_compatibility/SodiumRenderingContext.java'
+        if (!sodiumCompatCompile) {
+            exclude 'qouteall/imm_ptl/core/compat/mixin/sodium/**'
+            exclude 'qouteall/imm_ptl/core/compat/sodium_compatibility/IESodiumRenderSectionManager.java'
+            exclude 'qouteall/imm_ptl/core/compat/sodium_compatibility/SodiumRenderingContext.java'
+        }
+        else {
+            // Shader clipping remains outside Phase 6.0. These two mixins still
+            // depend on the removed Program/legacy Sodium shader interfaces.
+            exclude 'qouteall/imm_ptl/core/compat/mixin/sodium/MixinSodiumDefaultShaderInterface.java'
+            exclude 'qouteall/imm_ptl/core/compat/mixin/sodium/MixinSodiumShaderLoader.java'
+        }
         exclude 'qouteall/imm_ptl/core/mixin/client/render/MixinShaderInstanceForIris.java'
         exclude 'qouteall/imm_ptl/core/mixin/client/render/MixinLevelRenderer_BeforeIris.java'
         exclude 'qouteall/imm_ptl/core/mixin/client/render/MixinRenderSystem_Clipping.java'
@@ -177,13 +233,21 @@ if (project.vanilla_core_compile.equals('true')) {
 processResources {
     inputs.property "version", project.version
     inputs.property "vanilla_core_compile", project.vanilla_core_compile
+    inputs.property "enable_sodium_compat", sodiumCompatCompile
+    inputs.property "sodium_compat_runtime_group", sodiumCompatRuntimeGroup
 
     filesMatching("fabric.mod.json") {
         expand "version": project.version
         if (project.vanilla_core_compile.equals('true')) {
             filter { line ->
-                if (line.contains('"imm_ptl_compat.mixins.json",')) return null
+                if (
+                    line.contains('"imm_ptl_compat.mixins.json",') &&
+                    !sodiumRuntimeMixinsEnabled
+                ) return null
                 if (line.contains('"dimlib":')) return null
+                if (sodiumCompatCompile && line.contains('"sodium":')) {
+                    return line.replace('">0.8.7"', '">=0.9.0"')
+                }
                 if (line.contains('"minecraft":')) return line.replace(',', '')
                 return line
             }
@@ -256,8 +320,23 @@ processResources {
         }
     }
 
-    if (project.vanilla_core_compile.equals('true')) {
+    if (vanillaCoreCompile && !sodiumRuntimeMixinsEnabled) {
         exclude "imm_ptl_compat.mixins.json"
+    }
+
+    doLast {
+        if (sodiumRuntimeMixinsEnabled) {
+            File compatConfig = layout.buildDirectory
+                .file('resources/main/imm_ptl_compat.mixins.json')
+                .get().asFile
+            def config = new JsonSlurper().parse(compatConfig)
+            config.mixins = sodiumRuntimeMixinsByGroup[sodiumCompatRuntimeGroup]
+            compatConfig.text = JsonOutput.prettyPrint(JsonOutput.toJson(config)) + '\n'
+            logger.lifecycle(
+                "Immersive Portals Sodium runtime mixin group ${sodiumCompatRuntimeGroup}: " +
+                    config.mixins.join(', ')
+            )
+        }
     }
 }
 

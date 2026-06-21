@@ -3,6 +3,7 @@ package qouteall.imm_ptl.core.render;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
@@ -10,6 +11,8 @@ import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.world.phys.Vec3;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import qouteall.imm_ptl.core.IPCGlobal;
 import qouteall.imm_ptl.core.portal.Portal;
 
@@ -17,8 +20,10 @@ import qouteall.imm_ptl.core.portal.Portal;
 public class PortalEntityRenderer<T extends Portal>
     extends EntityRenderer<T, PortalEntityRenderer.PortalRenderState<T>> {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(PortalEntityRenderer.class);
     private static final int FRAME_COLOR = 0xff22ddff;
     private static final int DIAGONAL_COLOR = 0x9922ddff;
+    private static boolean loggedSodiumSubmit;
 
     public PortalEntityRenderer(EntityRendererProvider.Context context) {
         super(context);
@@ -46,6 +51,10 @@ public class PortalEntityRenderer<T extends Portal>
         SubmitNodeCollector submitNodeCollector,
         CameraRenderState cameraRenderState
     ) {
+        if (FabricLoader.getInstance().isModLoaded("sodium") && !loggedSodiumSubmit) {
+            loggedSodiumSubmit = true;
+            LOGGER.info("PortalEntityRenderer submit called under Sodium: true");
+        }
         if (FrontClipping.shouldCullPortalEntityByMinimalClipping(state.portal)) {
             return;
         }

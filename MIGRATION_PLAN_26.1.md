@@ -1269,3 +1269,155 @@ stencil public et le fog vanilla fallback.
 Commit de reference : `Stabilize vanilla minimal portal renderer baseline`.
 
 Rapport : `PHASE5.17_VANILLA_BASELINE_FREEZE.md`.
+
+## Phase 6 - Compatibilites progressives
+
+### 6.0 Profil Sodium compile-only separe
+
+Statut : termine le 20 juin 2026.
+
+- nouvelle propriete `enable_sodium_compat=false` par defaut ;
+- profil vanilla par defaut inchange ;
+- Sodium 0.8.7 ajoute uniquement en `compileOnly` avec
+  `-Penable_sodium_compat=true` ;
+- Iris absent du profil ;
+- sept mixins Sodium non-shader compilables mais non actifs au runtime ;
+- deux mixins de clipping shader toujours exclus ;
+- premiere compilation Sodium : 2 erreurs API ;
+- compilation Sodium finale : 0 erreur ;
+- compilation vanilla finale : 0 erreur ;
+- menu avec Sodium explicitement charge : atteint sans crash ;
+- `imm_ptl_compat.mixins.json` toujours exclu des ressources runtime ;
+- renderer minimal vanilla non modifie.
+
+Corrections locales : `OcclusionCuller.Visitor` devient
+`RenderSectionVisitor`, et `Camera.getPosition()` devient `Camera.position()`.
+
+Le profil runtime de test exige les deux proprietes
+`enable_sodium_compat=true` et `enable_sodium=true`. Sans le second flag, le
+profil reste strictement compile-only.
+
+La Phase 6.1 pourra activer les sept mixins par petits groupes. Les mixins
+`MixinSodiumDefaultShaderInterface` et `MixinSodiumShaderLoader` restent hors
+scope tant que le clipping shader n'est pas repris.
+
+Rapport : `PHASE6.0_SODIUM_COMPILE_PROFILE.md`.
+
+### 6.1 Activation runtime progressive des mixins Sodium non-shader
+
+Statut : arrete proprement au Groupe A le 20 juin 2026.
+
+- selecteur cumulatif runtime ajoute : `none`, `A`, `B`, `C` ;
+- ressource compat generee avec uniquement les mixins Sodium selectionnes ;
+- Groupe A actif : `IESodiumWorldRenderer` et
+  `MixinSodiumFlawlessFrames` ;
+- menu Groupe A : BUILD SUCCESSFUL ;
+- monde Groupe A : joueur connecte puis crash FRAPI ;
+- monde groupe `none` : crash FRAPI identique ;
+- Groupes B et C non tentes ;
+- portail Sodium non teste ;
+- deux mixins shader Sodium toujours exclus ;
+- Iris, DimLib et AlternateDimensions non reactives.
+
+Blocage exact : Sodium 0.8.7 declare contenir un renderer Fabric API, ce qui
+desactive Indigo, mais son `FRAPIProvider` utilise une implementation no-op.
+`Renderer.get()` echoue alors au premier rendu d'objet tenu. Ce blocage est
+anterieur aux mixins Immersive Portals et doit etre resolu par un alignement
+Sodium/Fabric API ou un provider FRAPI Sodium compatible.
+
+Rapport : `PHASE6.1_SODIUM_RUNTIME_MIXINS.md`.
+
+### 6.2 Resolution du provider FRAPI Sodium
+
+Statut : termine le 21 juin 2026.
+
+- cause 0.8.7 confirmee : aucun service `FRAPIProvider` dans le jar ;
+- Sodium 0.8.9 officiellement compatible Minecraft 26.1 ;
+- service 0.8.9 present : `SodiumProvider` ;
+- Fabric API 0.145.1 satisfait le minimum demande par Sodium 0.8.9 ;
+- `sodium_path` migre vers `mc26.1.1-0.8.9-fabric` ;
+- contrainte Sodium assouplie uniquement dans le profil compat ;
+- monde `group=none` : charge, stable et ferme normalement ;
+- monde Groupe A : charge, stable et ferme normalement ;
+- crash FRAPI : 0 ;
+- Groupes B/C et portail non testes ;
+- Iris, DimLib et mixins shader toujours inactifs ;
+- profil vanilla et renderer minimal inchanges.
+
+Le prototype consistant a enregistrer Indigo manuellement reste retire : Indigo
+desactive ses propres mixins en presence de `contains_renderer`, ce qui rend ce
+fallback invalide. La correction correcte est le provider FRAPI fourni par
+Sodium 0.8.9.
+
+Rapport : `PHASE6.2_SODIUM_FRAPI_RENDERER_PROVIDER.md`.
+
+### 6.3 Activation runtime des groupes Sodium B et C
+
+Statut : termine le 21 juin 2026.
+
+- Groupe B stable en monde avec quatre mixins non-shader ;
+- signature `SodiumWorldRenderer.setupTerrain` alignee sur Sodium 0.8.9 ;
+- redirection du frustum deplacee vers `Viewport.isBoxVisibleDirect` ;
+- Groupe C stable avec les trois mixins de culling/regions supplementaires ;
+- monde charge, joueur connecte, 15 secondes stables et fermeture normale ;
+- crash FRAPI, erreur mixin, `ConcurrentModificationException`,
+  `Buffer already closed` et `Duplicate entity UUID` : 0 ;
+- portail de test cree et traversee client declenchee sous Groupe C ;
+- rendu du portail non confirme sous Sodium : aucune collecte
+  `PortalEntityRenderer`, aucun blit et aucune capture ;
+- profil vanilla, Iris, DimLib, AlternateDimensions et mixins shader inchanges.
+
+Le Groupe C devient la baseline Sodium non-shader. La suite doit raccorder le
+chemin visuel des entites portail au renderer Sodium sans modifier le renderer
+minimal vanilla.
+
+Rapport : `PHASE6.3_SODIUM_RUNTIME_GROUPS_BC.md`.
+
+### 6.4 Pont visuel minimal des portails sous Sodium
+
+Statut : termine le 21 juin 2026.
+
+- cause identifiee : deux filtres Sodium eliminaient les portails avant
+  `PortalEntityRenderer` ;
+- bypass limite aux entites `Portal` dans `EntityRenderer.shouldRender` ;
+- bypass limite aux portails sans section terrain Sodium compilee ;
+- Groupe C etendu a neuf mixins non-shader ;
+- portail present cote client, extraction et soumission confirmees ;
+- cadre cyan restaure sous Sodium ;
+- collecte non reentrante et framebuffer minimal atteints ;
+- masque profondeur et quad texture `SubmitNodeCollector` appliques ;
+- capture native Sodium obtenue ;
+- traversee Overworld vers Overworld revalidee ;
+- facade de tracking serveur optionnelle securisee sans reactiver entity sync ;
+- crash, `ConcurrentModificationException`, `Buffer already closed`,
+  `Duplicate entity UUID` et `AbstractMethodError` finals : 0 ;
+- vanilla, Iris, DimLib et mixins shader inchanges.
+
+Les limites restent celles du renderer minimal : clipping incomplet, cadres
+imbriques, une recursion et fog vanilla fallback.
+
+Rapport : `PHASE6.4_SODIUM_PORTAL_VISUAL_BRIDGE.md`.
+
+### 6.5 Gel de la baseline Sodium non-shader
+
+Statut : termine le 21 juin 2026.
+
+- Groupes A et B verifies inchanges ;
+- Groupe C fige avec neuf mixins non-shader ;
+- deux bypass portail limites strictement aux instances de `Portal` ;
+- instrumentation redondante retiree, logs utiles gardes en occurrence unique ;
+- vanilla `compileJava processResources` : BUILD SUCCESSFUL ;
+- Sodium compile-only : BUILD SUCCESSFUL ;
+- Groupe C dans `Phase49Test` : 30 secondes stables, fermeture normale ;
+- portail Sodium : cadre cyan, framebuffer, masque profondeur et quad texture
+  confirmes ;
+- capture native de baseline obtenue ;
+- crash, CME, buffer ferme, UUID duplique et `AbstractMethodError` sur les
+  temoins finaux : 0 ;
+- sauvegarde `Phase50Test` ecartee du temoin final car polluee par un ancien
+  UUID de portail duplique issu des campagnes automatiques ;
+- Iris, DimLib, AlternateDimensions et mixins shader toujours exclus.
+
+Commit prepare : `Stabilize Sodium non-shader portal rendering baseline`.
+
+Rapport : `PHASE6.5_SODIUM_BASELINE_FREEZE.md`.

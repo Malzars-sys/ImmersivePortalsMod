@@ -470,8 +470,15 @@ public class McHelper {
             return;
         }
 
-        ChunkMap.TrackedEntity entityTracker =
-            getIEChunkMap(entity.level().dimension()).ip_getEntityTrackerMap().get(entity.getId());
+        ChunkMap.TrackedEntity entityTracker;
+        try {
+            entityTracker = getIEChunkMap(entity.level().dimension())
+                .ip_getEntityTrackerMap().get(entity.getId());
+        }
+        catch (AbstractMethodError ignored) {
+            // Cross-dimensional entity tracking remains isolated in the vanilla/Sodium profiles.
+            return;
+        }
         if (entityTracker == null) {
 //            Helper.err("missing entity tracker object");
             return;
