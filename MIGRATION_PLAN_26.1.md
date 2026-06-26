@@ -1421,3 +1421,223 @@ Statut : termine le 21 juin 2026.
 Commit prepare : `Stabilize Sodium non-shader portal rendering baseline`.
 
 Rapport : `PHASE6.5_SODIUM_BASELINE_FREEZE.md`.
+
+### 7.0 Profil Iris compile-only separe
+
+Statut : termine le 25 juin 2026.
+
+- propriete `enable_iris_compat=false` ajoutee par defaut ;
+- profil Iris compile-only active avec `-Penable_iris_compat=true` ;
+- Iris 1.10.8 ajoute uniquement en `compileOnly` dans ce profil ;
+- Sodium 0.8.9 ajoute aussi en `compileOnly` dans ce profil, car le mixin
+  Iris/Sodium reference les interfaces shader Sodium ;
+- aucun runtime Iris active ;
+- aucun shaderpack charge ;
+- `imm_ptl_compat.mixins.json` reste exclu des ressources tant que les mixins
+  runtime ne sont pas explicitement actives ;
+- sources Iris reintegrees en compilation compile-only ;
+- renderers Iris legacy remplaces par des facades no-op compile-only :
+  `ExperimentalIrisPortalRenderer`, `IrisPortalRenderer` et
+  `IrisCompatibilityPortalRenderer` ;
+- `IPIrisHelper` neutralise les copies couleur/stencil legacy et conserve
+  seulement une copie profondeur publique minimale ;
+- `MixinIrisTransformPatcher` migre de `Program.Type.VERTEX` vers
+  `ShaderType.VERTEX` ;
+- vanilla `compileJava processResources` : BUILD SUCCESSFUL ;
+- Sodium compile-only : BUILD SUCCESSFUL ;
+- Iris compile-only : BUILD SUCCESSFUL ;
+- Iris runtime, DimLib, AlternateDimensions, shaderpack et mixins shader Sodium
+  restent inactifs.
+
+Limite volontaire : le rendu Iris runtime n'est pas restaure dans cette phase.
+Les facades no-op servent uniquement a ouvrir une baseline de compilation Iris
+mesurable avant les phases runtime.
+
+Rapport : `PHASE7.0_IRIS_COMPILE_PROFILE.md`.
+
+### 7.1 Runtime Iris minimal sans shaderpack
+
+Statut : termine le 25 juin 2026.
+
+- `enable_iris=true` devient effectif seulement avec
+  `enable_iris_compat=true` ;
+- Iris runtime ajoute uniquement dans le profil runtime Iris ;
+- blocage initial documente : Iris 1.10.8 exige Sodium `0.8.x` ;
+- `sodium_path` 0.8.9 de la baseline Sodium reste inchange ;
+- ajout d'un `iris_sodium_path` separe vers Sodium 0.8.7 pour le runtime Iris
+  menu-only, car Sodium 0.8.9 declare casser Iris `<=1.10.8` ;
+- shaderpack absent : dossier `run/shaderpacks` absent ;
+- `imm_ptl_compat.mixins.json` reste exclu des ressources runtime Iris ;
+- mixins Iris Immersive Portals actifs au runtime : aucun ;
+- Iris charge ses propres mixins et atteint le menu ;
+- log Iris confirme : `Shaders are disabled because no valid shaderpack is selected` ;
+- vanilla `compileJava processResources` : BUILD SUCCESSFUL ;
+- Sodium compile-only : BUILD SUCCESSFUL ;
+- Iris compile-only : BUILD SUCCESSFUL ;
+- Iris runtime menu : BUILD SUCCESSFUL, fermeture normale ;
+- aucun monde lance dans cette phase ;
+- DimLib, AlternateDimensions, shaderpack, renderer Iris avance et mixins shader
+  Sodium restent inactifs.
+
+Limite volontaire : ce profil runtime utilise Sodium 0.8.7 uniquement pour
+satisfaire Iris 1.10.8 au menu. La baseline Sodium non-shader reste sur 0.8.9.
+Le test monde Iris est reporte a 7.2.
+
+Rapport : `PHASE7.1_IRIS_RUNTIME_MENU.md`.
+
+### 7.2 Runtime Iris monde sans shaderpack
+
+Statut : termine le 25 juin 2026.
+
+- vanilla `compileJava processResources` : BUILD SUCCESSFUL ;
+- Sodium compile-only : BUILD SUCCESSFUL ;
+- Iris compile-only : BUILD SUCCESSFUL ;
+- Iris runtime menu sans shaderpack : BUILD SUCCESSFUL ;
+- Iris runtime monde sans shaderpack : BUILD SUCCESSFUL ;
+- monde temoin : `Phase72IrisNoShaderTest` ;
+- `Phase50Test` non utilise comme temoin final ;
+- Iris charge au runtime avec Sodium `0.8.7+mc26.1`, version separee requise par
+  Iris `1.10.8+mc26.1` ;
+- shaderpack charge : aucun ;
+- log Iris confirme : `Shaders are disabled because no valid shaderpack is selected` ;
+- `imm_ptl_compat.mixins.json` reste exclu des ressources runtime Iris ;
+- mixins Iris Immersive Portals actifs au runtime : aucun ;
+- renderer Iris avance toujours no-op/non restaure ;
+- blocage monde initial corrige : Sodium 0.8.7 declare un renderer FRAPI mais
+  n'enregistre aucun provider, ce qui faisait crasher `Renderer.get()` pendant
+  le rendu de la main/blocs ;
+- ajout d'un provider FRAPI fallback minimal limite a Iris + Sodium en
+  environnement de developpement, uniquement si aucun provider Fabric Renderer
+  API n'est deja actif ;
+- joueur connecte, monde stable plus de 20 secondes, fermeture normale ;
+- `UnsupportedOperationException`, crash, `Duplicate entity UUID`,
+  `ConcurrentModificationException`, `Buffer already closed` et
+  `Mixin apply failed` finals : 0 ;
+- DimLib, AlternateDimensions, shaderpack, mixins shader Sodium et clipping
+  shader restent inactifs.
+
+Limite volontaire : le fallback FRAPI est une rustine de compatibilite pour
+Iris/Sodium 0.8.7 sans shaderpack. Il ne remplace pas le provider Sodium 0.8.9
+de la baseline Sodium et ne restaure pas le rendu Iris avance.
+
+Rapport : `PHASE7.2_IRIS_RUNTIME_WORLD_NO_SHADERPACK.md`.
+
+### 7.3 Test portail Iris runtime sans shaderpack
+
+Statut : termine le 26 juin 2026.
+
+- vanilla `compileJava processResources` : BUILD SUCCESSFUL ;
+- Sodium compile-only : BUILD SUCCESSFUL ;
+- Iris compile-only : BUILD SUCCESSFUL ;
+- Iris runtime monde sans shaderpack : BUILD SUCCESSFUL ;
+- Iris runtime portail sans shaderpack : BUILD SUCCESSFUL ;
+- Iris `1.10.8+mc26.1` charge ;
+- Sodium runtime Iris `0.8.7+mc26.1` charge ;
+- fallback FRAPI Iris/Sodium 0.8.7 enregistre ;
+- shaderpack charge : aucun ;
+- monde temoin : `Phase72IrisNoShaderTest` ;
+- portail cree via flag dev : oui ;
+- portail present cote client : oui ;
+- traversee declenchee : oui ;
+- `Client Teleported Statically` observe ;
+- crash, `UnsupportedOperationException`, `Duplicate entity UUID`,
+  `ConcurrentModificationException`, `Buffer already closed` et erreur mixin : 0 ;
+- DimLib, AlternateDimensions, renderer Iris avance et mixins shader Sodium
+  restent inactifs.
+
+Blocage visuel identifie : le portail n'atteint pas `PortalEntityRenderer` sous
+Iris/Sodium 0.8.7. `imm_ptl_compat.mixins.json` reste exclu dans ce profil, donc
+les deux bypass portail du Groupe C Sodium ne sont pas actifs :
+`MixinSodiumPortalEntityRenderer` et `MixinSodiumPortalLevelRenderer`. Le portail
+est synchronise et traversable, mais filtre avant la soumission du renderer ;
+aucune capture framebuffer n'est donc produite.
+
+Suite recommandee : ouvrir une phase 7.4 mini-groupe Iris/Sodium 0.8.7 limite
+aux deux bypass `Portal`, sans activer tout le Groupe C, sans shaderpack, sans
+renderer Iris avance et sans mixins shader Sodium.
+
+Rapport : `PHASE7.3_IRIS_PORTAL_NO_SHADERPACK.md`.
+
+### 7.4 Mini-groupe Iris/Sodium 0.8.7 limite aux bypass Portal
+
+Statut : termine le 26 juin 2026.
+
+- ajout d'un mini-groupe runtime Iris/Sodium limite a deux mixins :
+  `sodium.MixinSodiumPortalEntityRenderer` et
+  `sodium.MixinSodiumPortalLevelRenderer` ;
+- `imm_ptl_compat.mixins.json` est genere dans le profil runtime Iris avec
+  exactement ces deux mixins ;
+- Groupe C Sodium complet non active dans le profil Iris ;
+- mixins shader Sodium toujours inactifs ;
+- baseline Sodium inchangee : `sodium_path` reste sur Sodium 0.8.9 ;
+- runtime Iris inchange : `iris_sodium_path` reste sur Sodium 0.8.7 ;
+- vanilla `compileJava processResources` : BUILD SUCCESSFUL ;
+- Sodium compile-only : BUILD SUCCESSFUL ;
+- Iris compile-only : BUILD SUCCESSFUL ;
+- Iris runtime monde sans shaderpack : BUILD SUCCESSFUL ;
+- Iris runtime portail sans shaderpack : BUILD SUCCESSFUL ;
+- fallback FRAPI Iris/Sodium 0.8.7 enregistre ;
+- shaderpack charge : aucun ;
+- bypass `EntityRenderer.shouldRender` actif pour `Portal` : oui ;
+- bypass `LevelRenderer.isSectionCompiledAndVisible` actif pour `Portal` : oui ;
+- `PortalEntityRenderer.submit` atteint sous Iris/Sodium 0.8.7 ;
+- cadre cyan visible ;
+- framebuffer minimal atteint ;
+- texture framebuffer disponible et quad texture soumis via `SubmitNodeCollector` ;
+- masque profondeur minimal applique ;
+- capture native obtenue :
+  `run/screenshots/phase7.4-iris-portal-bypass.png` ;
+- traversee revalidee avec `Client Teleported Statically` ;
+- crash, `UnsupportedOperationException`, `Duplicate entity UUID`,
+  `ConcurrentModificationException`, `Buffer already closed` et erreur mixin : 0 ;
+- DimLib, AlternateDimensions, shaderpack, renderer Iris avance et clipping
+  shader restent inactifs.
+
+Limite volontaire : le rendu reste le renderer minimal existant, avec clipping
+incomplet, une recursion et fog fallback. Aucun shaderpack ni chemin Iris avance
+n'est restaure dans cette phase.
+
+Rapport : `PHASE7.4_IRIS_SODIUM_PORTAL_BYPASS.md`.
+
+### 7.5 Gel baseline Iris runtime sans shaderpack
+
+Statut : termine le 26 juin 2026.
+
+- baseline Iris runtime sans shaderpack figee ;
+- Iris runtime : `1.10.8+mc26.1` ;
+- Sodium runtime Iris : `0.8.7+mc26.1` via `iris_sodium_path` separe ;
+- baseline Sodium conservee sur `sodium_path` Sodium 0.8.9 ;
+- `enable_iris=false` et `enable_iris_compat=false` restent les valeurs par
+  defaut ;
+- fallback FRAPI Iris/Sodium 0.8.7 confirme limite au dev, a Iris + Sodium et
+  seulement lorsqu'aucun provider Fabric Renderer API n'est deja actif ;
+- mini-groupe Iris/Sodium runtime confirme avec exactement :
+  `sodium.MixinSodiumPortalEntityRenderer` et
+  `sodium.MixinSodiumPortalLevelRenderer` ;
+- Groupe C complet non active dans le profil Iris ;
+- mixins shader Sodium inactifs ;
+- renderer Iris avance toujours no-op ;
+- DimLib et AlternateDimensions inactifs ;
+- vanilla `compileJava processResources` : BUILD SUCCESSFUL ;
+- Sodium compile-only : BUILD SUCCESSFUL ;
+- Iris compile-only : BUILD SUCCESSFUL ;
+- `processResources` Iris runtime : BUILD SUCCESSFUL et JSON avec exactement
+  deux mixins `Portal` ;
+- Iris runtime monde sans shaderpack : BUILD SUCCESSFUL ;
+- Iris runtime portail sans shaderpack : BUILD SUCCESSFUL ;
+- `PortalEntityRenderer.submit` atteint ;
+- cadre cyan visible ;
+- framebuffer minimal, texture framebuffer et quad `SubmitNodeCollector`
+  confirmes ;
+- capture obtenue :
+  `run/screenshots/phase7.5-iris-no-shaderpack-baseline.png` ;
+- traversee revalidee avec `Client Teleported Statically` ;
+- crash, `UnsupportedOperationException`, `Duplicate entity UUID`,
+  `ConcurrentModificationException`, `Buffer already closed` et erreur mixin : 0.
+
+Limites conservees : pas de shaderpack, pas de renderer Iris avance, clipping
+general incomplet, fog vanilla fallback et une seule recursion.
+
+Commit prevu : `Stabilize Iris no-shaderpack portal rendering baseline`.
+
+Rapport : `PHASE7.5_IRIS_NO_SHADERPACK_BASELINE_FREEZE.md`.

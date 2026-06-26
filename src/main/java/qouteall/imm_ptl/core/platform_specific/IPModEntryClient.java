@@ -12,6 +12,7 @@ import qouteall.imm_ptl.core.IPGlobal;
 import qouteall.imm_ptl.core.IPMcHelper;
 import qouteall.imm_ptl.core.IPModMainClient;
 import qouteall.imm_ptl.core.compat.IPModInfoChecking;
+import qouteall.imm_ptl.core.compat.iris_compatibility.IrisSodiumFrapiFallbackRenderer;
 import qouteall.imm_ptl.core.portal.BreakableMirror;
 import qouteall.imm_ptl.core.portal.EndPortalEntity;
 import qouteall.imm_ptl.core.portal.LoadingIndicatorEntity;
@@ -61,6 +62,8 @@ public class IPModEntryClient implements ClientModInitializer {
     
     @Override
     public void onInitializeClient() {
+        IrisSodiumFrapiFallbackRenderer.registerIfNeeded();
+
         IPModMainClient.init();
         
         initPortalRenderers();

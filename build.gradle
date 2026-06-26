@@ -17,7 +17,11 @@ def vanillaCoreCompile = project.vanilla_core_compile.equals('true')
 def sodiumCompatCompile = providers.gradleProperty('enable_sodium_compat')
     .map { it.equalsIgnoreCase('true') }
     .getOrElse(false)
+def irisCompatCompile = providers.gradleProperty('enable_iris_compat')
+    .map { it.equalsIgnoreCase('true') }
+    .getOrElse(false)
 def sodiumRuntimeEnabled = sodiumCompatCompile && project.enable_sodium.equals('true')
+def irisRuntimeEnabled = irisCompatCompile && project.enable_iris.equals('true')
 def sodiumCompatRuntimeGroup = providers.gradleProperty('sodium_compat_runtime_group')
     .getOrElse('none')
     .toUpperCase(Locale.ROOT)
@@ -44,6 +48,10 @@ def sodiumRuntimeMixinsByGroup = [
         'sodium.MixinSodiumRenderSectionManager'
     ]
 ]
+def irisSodiumPortalRuntimeMixins = [
+    'sodium.MixinSodiumPortalEntityRenderer',
+    'sodium.MixinSodiumPortalLevelRenderer'
+]
 if (!(sodiumCompatRuntimeGroup in ['NONE', 'A', 'B', 'C'])) {
     throw new GradleException(
         "Unknown sodium_compat_runtime_group '${sodiumCompatRuntimeGroup}'. Use none, A, B or C."
@@ -51,6 +59,7 @@ if (!(sodiumCompatRuntimeGroup in ['NONE', 'A', 'B', 'C'])) {
 }
 def sodiumRuntimeMixinsEnabled =
     sodiumRuntimeEnabled && sodiumCompatRuntimeGroup != 'NONE'
+def irisSodiumPortalRuntimeMixinsEnabled = irisRuntimeEnabled
 
 base {
     archivesName = project.archives_base_name
@@ -124,11 +133,11 @@ dependencies {
     compileOnly "maven.modrinth:modmenu:${modmenu_version}"
     runtimeOnly "maven.modrinth:modmenu:${modmenu_version}"
 
-    if (!vanillaCoreCompile || sodiumCompatCompile) {
+    if (!vanillaCoreCompile || sodiumCompatCompile || irisCompatCompile) {
         compileOnly "${project.sodium_path}"
     }
 
-    if (!vanillaCoreCompile) {
+    if (!vanillaCoreCompile || irisCompatCompile) {
         compileOnly "${project.iris_path}"
     }
 
@@ -152,13 +161,14 @@ dependencies {
     // put these into inner mod to reduce duplicate MC jar
 
     if (
-        (!vanillaCoreCompile || sodiumCompatCompile) &&
-        project.enable_sodium.equals('true')
+        ((!vanillaCoreCompile || sodiumCompatCompile) &&
+            project.enable_sodium.equals('true')) ||
+            irisRuntimeEnabled
     ) {
-        runtimeOnly "${project.sodium_path}"
+        runtimeOnly irisRuntimeEnabled ? "${project.iris_sodium_path}" : "${project.sodium_path}"
     }
 
-    if (!project.vanilla_core_compile.equals('true') && project.enable_iris.equals('true')) {
+    if (irisRuntimeEnabled) {
         runtimeOnly "${project.iris_path}"
         implementation "org.anarres:jcpp:1.4.14" // for iris
         implementation 'io.github.douira:glsl-transformer:2.0.0-pre13' // for iris
@@ -202,16 +212,31 @@ dependencies {
 
 if (vanillaCoreCompile) {
     sourceSets.main.java {
-        exclude 'qouteall/imm_ptl/core/compat/mixin/iris/**'
-        exclude 'qouteall/imm_ptl/core/compat/iris_compatibility/ExperimentalIrisPortalRenderer.java'
-        exclude 'qouteall/imm_ptl/core/compat/iris_compatibility/IEIrisNewWorldRenderingPipeline.java'
-        exclude 'qouteall/imm_ptl/core/compat/iris_compatibility/IEIrisShadowRenderTargets.java'
-        exclude 'qouteall/imm_ptl/core/compat/iris_compatibility/IPIrisHelper.java'
-        exclude 'qouteall/imm_ptl/core/compat/iris_compatibility/IrisCompatibilityPortalRenderer.java'
-        exclude 'qouteall/imm_ptl/core/compat/iris_compatibility/IrisPortalRenderer.java'
-        exclude 'qouteall/imm_ptl/core/compat/iris_compatibility/ShadowMapSwapper.java'
-        if (!sodiumCompatCompile) {
+        if (!irisCompatCompile) {
+            exclude 'qouteall/imm_ptl/core/compat/mixin/iris/**'
+            exclude 'qouteall/imm_ptl/core/compat/iris_compatibility/ExperimentalIrisPortalRenderer.java'
+            exclude 'qouteall/imm_ptl/core/compat/iris_compatibility/IEIrisNewWorldRenderingPipeline.java'
+            exclude 'qouteall/imm_ptl/core/compat/iris_compatibility/IEIrisShadowRenderTargets.java'
+            exclude 'qouteall/imm_ptl/core/compat/iris_compatibility/IPIrisHelper.java'
+            exclude 'qouteall/imm_ptl/core/compat/iris_compatibility/IrisCompatibilityPortalRenderer.java'
+            exclude 'qouteall/imm_ptl/core/compat/iris_compatibility/IrisPortalRenderer.java'
+            exclude 'qouteall/imm_ptl/core/compat/iris_compatibility/ShadowMapSwapper.java'
+        }
+        if (!sodiumCompatCompile && !irisCompatCompile) {
             exclude 'qouteall/imm_ptl/core/compat/mixin/sodium/**'
+            exclude 'qouteall/imm_ptl/core/compat/sodium_compatibility/IESodiumRenderSectionManager.java'
+            exclude 'qouteall/imm_ptl/core/compat/sodium_compatibility/SodiumRenderingContext.java'
+        }
+        else if (!sodiumCompatCompile && irisCompatCompile) {
+            exclude 'qouteall/imm_ptl/core/compat/mixin/sodium/IESodiumWorldRenderer.java'
+            exclude 'qouteall/imm_ptl/core/compat/mixin/sodium/MixinSodiumDefaultShaderInterface.java'
+            exclude 'qouteall/imm_ptl/core/compat/mixin/sodium/MixinSodiumFlawlessFrames.java'
+            exclude 'qouteall/imm_ptl/core/compat/mixin/sodium/MixinSodiumOcclusionCuller.java'
+            exclude 'qouteall/imm_ptl/core/compat/mixin/sodium/MixinSodiumRenderRegion.java'
+            exclude 'qouteall/imm_ptl/core/compat/mixin/sodium/MixinSodiumRenderSectionManager.java'
+            exclude 'qouteall/imm_ptl/core/compat/mixin/sodium/MixinSodiumShaderLoader.java'
+            exclude 'qouteall/imm_ptl/core/compat/mixin/sodium/MixinSodiumViewport.java'
+            exclude 'qouteall/imm_ptl/core/compat/mixin/sodium/MixinSodiumWorldRenderer.java'
             exclude 'qouteall/imm_ptl/core/compat/sodium_compatibility/IESodiumRenderSectionManager.java'
             exclude 'qouteall/imm_ptl/core/compat/sodium_compatibility/SodiumRenderingContext.java'
         }
@@ -234,6 +259,8 @@ processResources {
     inputs.property "version", project.version
     inputs.property "vanilla_core_compile", project.vanilla_core_compile
     inputs.property "enable_sodium_compat", sodiumCompatCompile
+    inputs.property "enable_iris_compat", irisCompatCompile
+    inputs.property "enable_iris", project.enable_iris
     inputs.property "sodium_compat_runtime_group", sodiumCompatRuntimeGroup
 
     filesMatching("fabric.mod.json") {
@@ -242,10 +269,11 @@ processResources {
             filter { line ->
                 if (
                     line.contains('"imm_ptl_compat.mixins.json",') &&
-                    !sodiumRuntimeMixinsEnabled
+                    !sodiumRuntimeMixinsEnabled &&
+                    !irisSodiumPortalRuntimeMixinsEnabled
                 ) return null
                 if (line.contains('"dimlib":')) return null
-                if (sodiumCompatCompile && line.contains('"sodium":')) {
+                if ((sodiumCompatCompile || irisCompatCompile) && line.contains('"sodium":')) {
                     return line.replace('">0.8.7"', '">=0.9.0"')
                 }
                 if (line.contains('"minecraft":')) return line.replace(',', '')
@@ -320,22 +348,32 @@ processResources {
         }
     }
 
-    if (vanillaCoreCompile && !sodiumRuntimeMixinsEnabled) {
+    if (vanillaCoreCompile && !sodiumRuntimeMixinsEnabled && !irisSodiumPortalRuntimeMixinsEnabled) {
         exclude "imm_ptl_compat.mixins.json"
     }
 
     doLast {
-        if (sodiumRuntimeMixinsEnabled) {
+        if (sodiumRuntimeMixinsEnabled || irisSodiumPortalRuntimeMixinsEnabled) {
             File compatConfig = layout.buildDirectory
                 .file('resources/main/imm_ptl_compat.mixins.json')
                 .get().asFile
             def config = new JsonSlurper().parse(compatConfig)
-            config.mixins = sodiumRuntimeMixinsByGroup[sodiumCompatRuntimeGroup]
+            config.mixins = irisSodiumPortalRuntimeMixinsEnabled ?
+                irisSodiumPortalRuntimeMixins :
+                sodiumRuntimeMixinsByGroup[sodiumCompatRuntimeGroup]
             compatConfig.text = JsonOutput.prettyPrint(JsonOutput.toJson(config)) + '\n'
-            logger.lifecycle(
-                "Immersive Portals Sodium runtime mixin group ${sodiumCompatRuntimeGroup}: " +
-                    config.mixins.join(', ')
-            )
+            if (irisSodiumPortalRuntimeMixinsEnabled) {
+                logger.lifecycle(
+                    "Immersive Portals Iris/Sodium portal runtime mixins: " +
+                        config.mixins.join(', ')
+                )
+            }
+            else {
+                logger.lifecycle(
+                    "Immersive Portals Sodium runtime mixin group ${sodiumCompatRuntimeGroup}: " +
+                        config.mixins.join(', ')
+                )
+            }
         }
     }
 }
