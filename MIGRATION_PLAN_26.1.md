@@ -1935,3 +1935,55 @@ capture. Complementary n'est donc pas promu nouvelle baseline visuelle. MakeUp
 reste la baseline shaderpack validee.
 
 Rapport : `PHASE8.6_IRIS_SECOND_SHADERPACK_PORTAL_TEST.md`.
+
+### 9.0 Audit clignotement framebuffer Iris shaderpack
+
+Objectif :
+
+Auditer le clignotement du contenu framebuffer sous certains shaderpacks, sans
+modifier le renderer ni restaurer les chemins Iris avances.
+
+Etat :
+
+- baseline importante : `8c09eb37 Stabilize Iris shaderpack minimal portal rendering` ;
+- `run/config/iris.properties` verifie puis restaure sur
+  `MakeUp-UltraFast-9.5c.zip` ;
+- aucun changement de code ;
+- shader clipping, Sodium shader mixins, DimLib, AlternateDimensions et renderer
+  Iris avance toujours inactifs.
+
+Tests :
+
+- MakeUp :
+  - monde `Phase90IrisShaderpackFramebufferAuditMakeUp` ;
+  - shaderpack actif : `MakeUp-UltraFast-9.5c.zip` ;
+  - mapping Iris fallback enregistre ;
+  - `Missing program` : 0 ;
+  - framebuffer disponible : `854x480` ;
+  - depth mask applique ;
+  - quad texture `SubmitNodeCollector` soumis ;
+  - portail present cote client ;
+  - crash/CME/buffer ferme/UUID duplique/UOE : 0.
+- Complementary :
+  - monde `Phase90IrisShaderpackFramebufferAuditComplementary` ;
+  - shaderpack actif : `ComplementaryReimagined_r5.8.1.zip` ;
+  - mapping Iris fallback enregistre ;
+  - `Missing program` : 0 ;
+  - framebuffer disponible : `854x480` ;
+  - depth mask applique ;
+  - quad texture `SubmitNodeCollector` soumis ;
+  - portail present cote client ;
+  - cadre cyan visible ;
+  - contenu framebuffer intermittent/clignotant ;
+  - crash/CME/buffer ferme/UUID duplique/UOE : 0.
+
+Conclusion : le probleme n'est pas une absence de texture ni une erreur
+d'override Iris. Les logs MakeUp et Complementary suivent le meme chemin
+Immersive Portals. La cause probable est une interaction shaderpack specifique
+entre le depth mask minimal `CompareOp.EQUAL`, le fallback `ShaderKey.TEXTURED`
+et les passes deferred/temporales/post-process de Complementary.
+
+Recommandation Phase 9.1 : micro-experience unique et reversible pour forcer le
+quad framebuffer sans depth mask afin de confirmer ou non la piste profondeur.
+
+Rapport : `PHASE9.0_IRIS_SHADERPACK_FRAMEBUFFER_FLICKER_AUDIT.md`.
