@@ -2048,3 +2048,72 @@ principal sous Complementary et isole le probleme autour de la comparaison de
 profondeur shaderpack.
 
 Rapport : `PHASE9.1_IRIS_FRAMEBUFFER_NO_DEPTH_MASK_EXPERIMENT.md`.
+
+### 9.2 Conception d'un chemin framebuffer shaderpack-safe
+
+Objectif :
+
+Transformer l'experience Phase 9.1 en modes de profondeur explicites pour
+comparer proprement les shaderpacks Iris sans toucher au renderer avance.
+
+Modification :
+
+- ajout de `IMM_PTL_FRAMEBUFFER_DEPTH_MODE=<mode>` ;
+- modes disponibles :
+  - `default` : comportement actuel, depth mask + textured pass `EQUAL` ;
+  - `no_depth` : textured pass sans masque profondeur ;
+  - `lequal` : depth mask + textured pass `LESS_THAN_OR_EQUAL` ;
+  - `always` : depth mask + textured pass `ALWAYS_PASS` ;
+- `IMM_PTL_FORCE_FRAMEBUFFER_NO_DEPTH_MASK=true` reste accepte comme alias
+  historique de `no_depth` si le nouveau mode n'est pas defini ;
+- comportement par defaut inchange.
+
+Validation compilation :
+
+- vanilla : BUILD SUCCESSFUL ;
+- Sodium compile-only : BUILD SUCCESSFUL ;
+- Iris compile-only : BUILD SUCCESSFUL.
+
+Runs :
+
+- MakeUp `default` :
+  - shaderpack : `MakeUp-UltraFast-9.5c.zip` ;
+  - pipeline : `depth-masked-equal` ;
+  - portail client present ;
+  - quad framebuffer soumis.
+- Complementary `default` :
+  - shaderpack : `ComplementaryReimagined_r5.8.1.zip` ;
+  - pipeline : `depth-masked-equal` ;
+  - portail client present ;
+  - quad framebuffer soumis.
+- Complementary `no_depth` :
+  - pipeline : `non-depth-masked` ;
+  - portail client present ;
+  - quad framebuffer soumis.
+- Complementary `lequal` :
+  - pipeline : `depth-masked-lequal` ;
+  - portail client present ;
+  - quad framebuffer soumis.
+- Complementary `always` :
+  - pipeline : `depth-masked-always` ;
+  - portail client present ;
+  - quad framebuffer soumis.
+
+Resultat :
+
+- les cinq chemins runtime atteignent le portail sans crash ;
+- `Buffer already closed` : 0 ;
+- `ConcurrentModificationException` : 0 ;
+- `Duplicate entity UUID` : 0 ;
+- `run/config/iris.properties` restaure sur `MakeUp-UltraFast-9.5c.zip` ;
+- Sodium shader mixins, Iris renderer avance, DimLib, AlternateDimensions,
+  shader clipping et stencil avance restent inactifs.
+
+Conclusion :
+
+`no_depth` reste le fallback le plus robuste mais degrade l'occlusion minimale.
+`lequal` est le meilleur candidat shaderpack-safe a valider visuellement, car il
+conserve le masque profondeur tout en evitant la comparaison stricte `EQUAL`.
+`always` reste un mode de diagnostic permissif.
+
+Rapport : `PHASE9.2_IRIS_SHADERPACK_SAFE_DEPTH_MODES.md`.

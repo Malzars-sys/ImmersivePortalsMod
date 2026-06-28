@@ -40,6 +40,8 @@ public final class IPRenderPipelines {
     public enum Slot {
         DRAW_FRAMEBUFFER_IN_AREA,
         DRAW_FRAMEBUFFER_IN_AREA_DEPTH_MASKED,
+        DRAW_FRAMEBUFFER_IN_AREA_DEPTH_LEQUAL,
+        DRAW_FRAMEBUFFER_IN_AREA_DEPTH_ALWAYS,
         PORTAL_DEPTH_MASK,
         PORTAL_AREA,
         BLIT_SCREEN_NO_BLEND,
@@ -52,6 +54,8 @@ public final class IPRenderPipelines {
     private static FramebufferTextureAlias minimalPortalFramebufferTexture;
     private static RenderType minimalPortalFramebufferRenderType;
     private static RenderType minimalPortalMaskedFramebufferRenderType;
+    private static RenderType minimalPortalLequalFramebufferRenderType;
+    private static RenderType minimalPortalAlwaysFramebufferRenderType;
     private static RenderType minimalPortalDepthMaskRenderType;
 
     private IPRenderPipelines() {
@@ -93,6 +97,34 @@ public final class IPRenderPipelines {
                     .withSampler("Sampler0")
                     .withCull(false)
                     .withDepthStencilState(new DepthStencilState(CompareOp.EQUAL, false))
+                    .withVertexFormat(DefaultVertexFormat.POSITION_TEX, VertexFormat.Mode.TRIANGLES)
+                    .build()
+            )
+        );
+        register(
+            Slot.DRAW_FRAMEBUFFER_IN_AREA_DEPTH_LEQUAL,
+            RenderPipelines.register(
+                RenderPipeline.builder(RenderPipelines.MATRICES_PROJECTION_SNIPPET)
+                    .withLocation("pipeline/imm_ptl_draw_framebuffer_in_area_depth_lequal")
+                    .withVertexShader("core/position_tex")
+                    .withFragmentShader("core/position_tex")
+                    .withSampler("Sampler0")
+                    .withCull(false)
+                    .withDepthStencilState(new DepthStencilState(CompareOp.LESS_THAN_OR_EQUAL, false))
+                    .withVertexFormat(DefaultVertexFormat.POSITION_TEX, VertexFormat.Mode.TRIANGLES)
+                    .build()
+            )
+        );
+        register(
+            Slot.DRAW_FRAMEBUFFER_IN_AREA_DEPTH_ALWAYS,
+            RenderPipelines.register(
+                RenderPipeline.builder(RenderPipelines.MATRICES_PROJECTION_SNIPPET)
+                    .withLocation("pipeline/imm_ptl_draw_framebuffer_in_area_depth_always")
+                    .withVertexShader("core/position_tex")
+                    .withFragmentShader("core/position_tex")
+                    .withSampler("Sampler0")
+                    .withCull(false)
+                    .withDepthStencilState(new DepthStencilState(CompareOp.ALWAYS_PASS, false))
                     .withVertexFormat(DefaultVertexFormat.POSITION_TEX, VertexFormat.Mode.TRIANGLES)
                     .build()
             )
@@ -199,10 +231,50 @@ public final class IPRenderPipelines {
     public static @Nullable RenderType getMinimalPortalMaskedFramebufferRenderType(
         RenderTarget framebuffer
     ) {
+        return getMinimalPortalDepthTestFramebufferRenderType(
+            framebuffer,
+            Slot.DRAW_FRAMEBUFFER_IN_AREA_DEPTH_MASKED,
+            "imm_ptl_minimal_portal_framebuffer_depth_masked",
+            () -> minimalPortalMaskedFramebufferRenderType,
+            renderType -> minimalPortalMaskedFramebufferRenderType = renderType
+        );
+    }
+
+    public static @Nullable RenderType getMinimalPortalLequalFramebufferRenderType(
+        RenderTarget framebuffer
+    ) {
+        return getMinimalPortalDepthTestFramebufferRenderType(
+            framebuffer,
+            Slot.DRAW_FRAMEBUFFER_IN_AREA_DEPTH_LEQUAL,
+            "imm_ptl_minimal_portal_framebuffer_depth_lequal",
+            () -> minimalPortalLequalFramebufferRenderType,
+            renderType -> minimalPortalLequalFramebufferRenderType = renderType
+        );
+    }
+
+    public static @Nullable RenderType getMinimalPortalAlwaysFramebufferRenderType(
+        RenderTarget framebuffer
+    ) {
+        return getMinimalPortalDepthTestFramebufferRenderType(
+            framebuffer,
+            Slot.DRAW_FRAMEBUFFER_IN_AREA_DEPTH_ALWAYS,
+            "imm_ptl_minimal_portal_framebuffer_depth_always",
+            () -> minimalPortalAlwaysFramebufferRenderType,
+            renderType -> minimalPortalAlwaysFramebufferRenderType = renderType
+        );
+    }
+
+    private static @Nullable RenderType getMinimalPortalDepthTestFramebufferRenderType(
+        RenderTarget framebuffer,
+        Slot slot,
+        String renderTypeName,
+        java.util.function.Supplier<@Nullable RenderType> getter,
+        java.util.function.Consumer<RenderType> setter
+    ) {
         if (Minecraft.getInstance().getMainRenderTarget().getDepthTextureView() == null) {
             return null;
         }
-        RenderPipeline pipeline = PIPELINES.get(Slot.DRAW_FRAMEBUFFER_IN_AREA_DEPTH_MASKED);
+        RenderPipeline pipeline = PIPELINES.get(slot);
         if (pipeline == null || framebuffer.getColorTextureView() == null) {
             return null;
         }
@@ -211,7 +283,8 @@ public final class IPRenderPipelines {
         if (minimalPortalFramebufferTexture == null) {
             return null;
         }
-        if (minimalPortalMaskedFramebufferRenderType == null) {
+        RenderType renderType = getter.get();
+        if (renderType == null) {
             RenderSetup setup = RenderSetup.builder(pipeline)
                 .withTexture(
                     "Sampler0",
@@ -219,12 +292,10 @@ public final class IPRenderPipelines {
                     () -> RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR)
                 )
                 .createRenderSetup();
-            minimalPortalMaskedFramebufferRenderType = RenderType.create(
-                "imm_ptl_minimal_portal_framebuffer_depth_masked",
-                setup
-            );
+            renderType = RenderType.create(renderTypeName, setup);
+            setter.accept(renderType);
         }
-        return minimalPortalMaskedFramebufferRenderType;
+        return renderType;
     }
 
     private static boolean drawMesh(Slot slot, MeshData mesh, @Nullable GpuTextureView textureView) {
@@ -303,6 +374,8 @@ public final class IPRenderPipelines {
         PIPELINES.clear();
         minimalPortalFramebufferRenderType = null;
         minimalPortalMaskedFramebufferRenderType = null;
+        minimalPortalLequalFramebufferRenderType = null;
+        minimalPortalAlwaysFramebufferRenderType = null;
         minimalPortalDepthMaskRenderType = null;
     }
 
@@ -332,6 +405,18 @@ public final class IPRenderPipelines {
                 assignPipeline,
                 shaderKeyClass,
                 PIPELINES.get(Slot.DRAW_FRAMEBUFFER_IN_AREA_DEPTH_MASKED),
+                "TEXTURED"
+            );
+            assignIrisPipeline(
+                assignPipeline,
+                shaderKeyClass,
+                PIPELINES.get(Slot.DRAW_FRAMEBUFFER_IN_AREA_DEPTH_LEQUAL),
+                "TEXTURED"
+            );
+            assignIrisPipeline(
+                assignPipeline,
+                shaderKeyClass,
+                PIPELINES.get(Slot.DRAW_FRAMEBUFFER_IN_AREA_DEPTH_ALWAYS),
                 "TEXTURED"
             );
 

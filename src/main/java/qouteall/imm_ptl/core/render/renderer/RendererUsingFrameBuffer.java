@@ -35,6 +35,7 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class RendererUsingFrameBuffer extends PortalRenderer {
     private static final Logger LOGGER = LoggerFactory.getLogger(RendererUsingFrameBuffer.class);
@@ -64,10 +65,61 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
     private static long minimalRecursivePortalScreenshotRequestedAt;
     private static final boolean FORCE_FRAMEBUFFER_NO_DEPTH_MASK =
         "true".equalsIgnoreCase(System.getenv("IMM_PTL_FORCE_FRAMEBUFFER_NO_DEPTH_MASK"));
+    private static final FramebufferDepthMode FRAMEBUFFER_DEPTH_MODE =
+        resolveFramebufferDepthMode();
     private final List<Portal> queuedMinimalPortals = new ArrayList<>();
     private int lastQueuedFrame = -1;
     private Portal renderedMinimalPortal;
     private int renderedMinimalPortalFrame = -1;
+
+    private enum FramebufferDepthMode {
+        DEFAULT("default", true, "EQUAL", "depth-masked-equal"),
+        NO_DEPTH("no_depth", false, "none", "non-depth-masked"),
+        LEQUAL("lequal", true, "LEQUAL", "depth-masked-lequal"),
+        ALWAYS("always", true, "ALWAYS", "depth-masked-always");
+
+        private final String id;
+        private final boolean usesDepthMask;
+        private final String depthTestName;
+        private final String pipelineModeName;
+
+        FramebufferDepthMode(
+            String id,
+            boolean usesDepthMask,
+            String depthTestName,
+            String pipelineModeName
+        ) {
+            this.id = id;
+            this.usesDepthMask = usesDepthMask;
+            this.depthTestName = depthTestName;
+            this.pipelineModeName = pipelineModeName;
+        }
+
+        private RenderType getFramebufferRenderType(RenderTarget framebuffer) {
+            return switch (this) {
+                case DEFAULT -> IPRenderPipelines.getMinimalPortalMaskedFramebufferRenderType(framebuffer);
+                case NO_DEPTH -> IPRenderPipelines.getMinimalPortalFramebufferRenderType(framebuffer);
+                case LEQUAL -> IPRenderPipelines.getMinimalPortalLequalFramebufferRenderType(framebuffer);
+                case ALWAYS -> IPRenderPipelines.getMinimalPortalAlwaysFramebufferRenderType(framebuffer);
+            };
+        }
+    }
+
+    private static FramebufferDepthMode resolveFramebufferDepthMode() {
+        String rawMode = System.getenv("IMM_PTL_FRAMEBUFFER_DEPTH_MODE");
+        if (rawMode == null || rawMode.isBlank()) {
+            return FORCE_FRAMEBUFFER_NO_DEPTH_MASK ? FramebufferDepthMode.NO_DEPTH : FramebufferDepthMode.DEFAULT;
+        }
+
+        String normalized = rawMode.trim().toLowerCase(Locale.ROOT).replace('-', '_');
+        return switch (normalized) {
+            case "default", "depth_mask", "depth_masked", "equal" -> FramebufferDepthMode.DEFAULT;
+            case "no_depth", "none", "disabled", "off" -> FramebufferDepthMode.NO_DEPTH;
+            case "lequal", "less_equal", "less_or_equal" -> FramebufferDepthMode.LEQUAL;
+            case "always", "always_depth" -> FramebufferDepthMode.ALWAYS;
+            default -> FORCE_FRAMEBUFFER_NO_DEPTH_MASK ? FramebufferDepthMode.NO_DEPTH : FramebufferDepthMode.DEFAULT;
+        };
+    }
 
     public void queueMinimalPortalFromEntityRenderer(Portal portal) {
         if (
@@ -377,21 +429,26 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
         if (!loggedNoDepthMaskExperiment) {
             loggedNoDepthMaskExperiment = true;
             LOGGER.info(
-                "Minimal recursive portal no-depth-mask experiment active: {}",
+                "Minimal recursive portal legacy no-depth-mask experiment active: {}",
                 FORCE_FRAMEBUFFER_NO_DEPTH_MASK
+            );
+            LOGGER.info(
+                "Minimal recursive portal framebuffer depth mode: {} (depth test: {})",
+                FRAMEBUFFER_DEPTH_MODE.id,
+                FRAMEBUFFER_DEPTH_MODE.depthTestName
             );
         }
 
-        if (!FORCE_FRAMEBUFFER_NO_DEPTH_MASK && !loggedMinimalMaskAttempt) {
+        if (FRAMEBUFFER_DEPTH_MODE.usesDepthMask && !loggedMinimalMaskAttempt) {
             loggedMinimalMaskAttempt = true;
             LOGGER.info("Minimal portal depth mask attempted: true");
         }
 
         RenderType depthMaskRenderType = IPRenderPipelines.getMinimalPortalDepthMaskRenderType();
         RenderType maskedFramebufferRenderType =
-            IPRenderPipelines.getMinimalPortalMaskedFramebufferRenderType(secondaryFrameBuffer.fb);
+            FRAMEBUFFER_DEPTH_MODE.getFramebufferRenderType(secondaryFrameBuffer.fb);
         boolean useDepthMask =
-            !FORCE_FRAMEBUFFER_NO_DEPTH_MASK &&
+            FRAMEBUFFER_DEPTH_MODE.usesDepthMask &&
                 depthMaskRenderType != null &&
                 maskedFramebufferRenderType != null;
         RenderType renderType = useDepthMask
@@ -421,7 +478,7 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
             loggedFramebufferPipelineMode = true;
             LOGGER.info(
                 "Minimal recursive portal framebuffer pipeline mode: {}",
-                useDepthMask ? "depth-masked" : "non-depth-masked"
+                useDepthMask ? FRAMEBUFFER_DEPTH_MODE.pipelineModeName : "non-depth-masked"
             );
         }
 
@@ -437,15 +494,21 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
                     loggedMinimalMaskApplied = true;
                     LOGGER.info(
                         "Minimal portal depth mask applied: true " +
-                            "(depth-only rectangle followed by EQUAL textured pass)"
+                            "(depth-only rectangle followed by {} textured pass)",
+                        FRAMEBUFFER_DEPTH_MODE.depthTestName
                     );
                 }
             }
             else if (!loggedMinimalMaskFallback) {
                 loggedMinimalMaskFallback = true;
-                LOGGER.info(
-                    "Minimal portal depth mask fallback: required depth attachment or pipeline unavailable"
-                );
+                if (FRAMEBUFFER_DEPTH_MODE == FramebufferDepthMode.NO_DEPTH) {
+                    LOGGER.info("Minimal portal depth mask intentionally disabled by framebuffer depth mode");
+                }
+                else {
+                    LOGGER.info(
+                        "Minimal portal depth mask fallback: required depth attachment or pipeline unavailable"
+                    );
+                }
             }
             MyRenderHelper.submitPortalAreaWithFramebuffer(
                 portal,
