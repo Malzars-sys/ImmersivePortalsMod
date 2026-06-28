@@ -1641,3 +1641,260 @@ general incomplet, fog vanilla fallback et une seule recursion.
 Commit prevu : `Stabilize Iris no-shaderpack portal rendering baseline`.
 
 Rapport : `PHASE7.5_IRIS_NO_SHADERPACK_BASELINE_FREEZE.md`.
+
+### 8.0 Premier test Iris avec shaderpack, sans portail
+
+Statut : partiellement valide le 28 juin 2026, bloque avant runtime shaderpack
+car aucun shaderpack local n'est disponible.
+
+- baseline Iris no-shaderpack confirmee :
+  `bd3a080c Stabilize Iris no-shaderpack portal rendering baseline` ;
+- vanilla `compileJava processResources` : BUILD SUCCESSFUL ;
+- Sodium compile-only : BUILD SUCCESSFUL ;
+- Iris compile-only : BUILD SUCCESSFUL ;
+- Iris runtime monde sans shaderpack :
+  `Phase72IrisNoShaderTest` BUILD SUCCESSFUL ;
+- Iris charge : `1.10.8+mc26.1` ;
+- Sodium runtime Iris charge : `0.8.7+mc26.1` ;
+- fallback FRAPI Iris/Sodium 0.8.7 enregistre ;
+- log Iris confirme : `Shaders are disabled because no valid shaderpack is selected` ;
+- crash, erreur mixin bloquante, `Duplicate entity UUID`,
+  `ConcurrentModificationException` et `Buffer already closed` : 0 ;
+- flags dev portail/capture explicitement retires du lancement ;
+- aucun portail cree ou teste dans cette phase ;
+- `run/shaderpacks` existe mais contient `0` shaderpack ;
+- aucun shaderpack n'a ete telecharge automatiquement ;
+- test runtime shaderpack non lance, conformement a la consigne.
+
+Blocage exact : fournir un shaderpack local dans `run/shaderpacks` avant de
+reprendre le smoke test Iris avec shaderpack.
+
+Rapport : `PHASE8.0_IRIS_SHADERPACK_WORLD_SMOKE_TEST.md`.
+
+### 8.0B Reprise test Iris avec shaderpack local, sans portail
+
+Statut : bloque le 28 juin 2026 avant runtime shaderpack.
+
+- baseline Iris no-shaderpack confirmee :
+  `bd3a080c Stabilize Iris no-shaderpack portal rendering baseline` ;
+- verification `run/shaderpacks` : `COUNT=0` ;
+- aucun shaderpack `.zip` local disponible ;
+- aucun shaderpack telecharge automatiquement ;
+- aucune configuration Iris shaderpack modifiee ;
+- aucun monde shaderpack lance ;
+- aucun portail cree ou teste ;
+- variables dev portail/capture absentes de l'environnement courant.
+
+Blocage exact : placer manuellement un seul shaderpack `.zip` dans
+`run/shaderpacks/`, puis relancer la Phase 8.0B.
+
+Rapport : `PHASE8.0B_IRIS_SHADERPACK_WORLD_SMOKE_TEST.md`.
+
+### 8.0C Test Iris avec shaderpack local, sans portail
+
+Statut : termine le 28 juin 2026.
+
+- shaderpack local detecte :
+  `run/shaderpacks/MakeUp-UltraFast-9.5c.zip` ;
+- nombre de shaderpacks `.zip` : 1 ;
+- activation controlee via `run/config/iris.properties` :
+  `shaderPack=MakeUp-UltraFast-9.5c.zip` ;
+- vanilla `compileJava processResources` : BUILD SUCCESSFUL ;
+- Sodium compile-only : BUILD SUCCESSFUL ;
+- Iris compile-only : BUILD SUCCESSFUL ;
+- monde temoin separe : `Phase80IrisShaderpackWorldTest` ;
+- le temoin a ete prepare depuis `Phase72IrisNoShaderTest`, pas depuis
+  `Phase50Test` ;
+- les donnees d'entites du temoin ont ete nettoyees avant le run final pour
+  garantir un test sans portail ;
+- Iris runtime shaderpack : BUILD SUCCESSFUL ;
+- Iris charge : `1.10.8+mc26.1` ;
+- Sodium runtime Iris charge : `0.8.7+mc26.1` ;
+- fallback FRAPI Iris/Sodium 0.8.7 enregistre ;
+- log Iris confirme :
+  `Using shaderpack: MakeUp-UltraFast-9.5c.zip` ;
+- pipeline Iris cree pour `minecraft:overworld` ;
+- joueur connecte ;
+- stabilite apres connexion : environ 23 secondes ;
+- fermeture normale ;
+- crash, erreur mixin bloquante, `UnsupportedOperationException`,
+  `Duplicate entity UUID`, `ConcurrentModificationException` et
+  `Buffer already closed` : 0 ;
+- `PortalEntityRenderer` dans le run final : 0 ;
+- aucun portail cree ;
+- aucune traversee testee.
+
+Notes : le shaderpack emet des warnings Iris sur des entrees
+`betterendforge::*`, non bloquants. `IPModInfoChecking` 404 et Realms auth
+restent non bloquants.
+
+Rapport : `PHASE8.0C_IRIS_SHADERPACK_WORLD_SMOKE_TEST.md`.
+
+### 8.1 Test portail Iris avec shaderpack actif
+
+Statut : termine le 28 juin 2026 avec blocage visuel documente.
+
+- shaderpack actif : `MakeUp-UltraFast-9.5c.zip` ;
+- Iris selectionne toujours le shaderpack via `run/config/iris.properties` ;
+- vanilla `compileJava processResources` : BUILD SUCCESSFUL ;
+- Sodium compile-only : BUILD SUCCESSFUL ;
+- Iris compile-only : BUILD SUCCESSFUL ;
+- monde temoin separe : `Phase81IrisShaderpackPortalTest` ;
+- le temoin a ete prepare depuis `Phase80IrisShaderpackWorldTest`, pas depuis
+  `Phase50Test` ;
+- les donnees d'entites du temoin ont ete nettoyees avant le run pour eviter
+  les anciens portails ;
+- Iris runtime shaderpack + portail : BUILD SUCCESSFUL ;
+- Iris charge : `1.10.8+mc26.1` ;
+- Sodium runtime Iris charge : `0.8.7+mc26.1` ;
+- fallback FRAPI Iris/Sodium 0.8.7 enregistre ;
+- log Iris confirme :
+  `Using shaderpack: MakeUp-UltraFast-9.5c.zip` ;
+- pipeline Iris cree pour `minecraft:overworld` ;
+- portail cree par flag dev ;
+- portail present cote client ;
+- bypass `EntityRenderer.shouldRender` pour `Portal` actif ;
+- bypass `LevelRenderer.isSectionCompiledAndVisible` pour `Portal` actif ;
+- `PortalEntityRenderer.submit` appele ;
+- framebuffer minimal atteint ;
+- texture framebuffer disponible : `854x480` ;
+- quad texture `SubmitNodeCollector` soumis ;
+- capture obtenue :
+  `run/screenshots/phase8.1-iris-shaderpack-portal.png` ;
+- traversee declenchee ;
+- `Client Teleported Statically` observe ;
+- fermeture normale ;
+- crash, erreur mixin bloquante, `UnsupportedOperationException`,
+  `Duplicate entity UUID`, `ConcurrentModificationException` et
+  `Buffer already closed` : 0.
+
+Blocage visuel restant : Iris avec shaderpack signale deux erreurs non fatales
+sur les pipelines minimaux Immersive Portals :
+`minecraft:pipeline/imm_ptl_portal_depth_mask` et
+`minecraft:pipeline/imm_ptl_draw_framebuffer_in_area_depth_masked` absents de
+la liste d'overrides. Le cadre cyan est visible et le portail est traversable,
+mais la texture destination n'est pas clairement lisible dans la capture.
+
+Rapport : `PHASE8.1_IRIS_SHADERPACK_PORTAL_TEST.md`.
+
+### 8.2 Audit overrides Iris pour pipelines Immersive Portals minimaux
+
+Statut : termine le 28 juin 2026.
+
+- cause exacte identifiee : Iris redirige les `RenderPipeline` via
+  `MixinShaderManager_Overrides.redirectIrisProgram`, puis consulte
+  `IrisPipelines.coreShaderMap` ;
+- les pipelines custom Immersive Portals n'etaient pas dans cette table ;
+- `IrisPipelines.getPipeline(...)` retournait donc `null` ;
+- Iris loggait ensuite `Missing program ... in override list` ;
+- le namespace `minecraft` de nos locations `pipeline/...` rendait le log plus
+  severe, mais n'etait pas la cause racine ;
+- correctif minimal applique dans `IPRenderPipelines` par reflexion, sans
+  dependance directe Iris :
+  - `imm_ptl_portal_depth_mask` -> `ShaderKey.BASIC_COLOR` ;
+  - `imm_ptl_draw_framebuffer_in_area_depth_masked` -> `ShaderKey.TEXTURED` ;
+  - `imm_ptl_draw_framebuffer_in_area` -> `ShaderKey.TEXTURED` ;
+- aucun renderer Iris avance restaure ;
+- aucun shader clipping restaure ;
+- aucun mixin shader Sodium active ;
+- DimLib et AlternateDimensions toujours inactifs ;
+- vanilla `compileJava processResources` : BUILD SUCCESSFUL ;
+- Sodium compile-only : BUILD SUCCESSFUL ;
+- Iris compile-only : BUILD SUCCESSFUL ;
+- runtime Iris + shaderpack + portail : BUILD SUCCESSFUL ;
+- shaderpack actif : `MakeUp-UltraFast-9.5c.zip` ;
+- mapping Iris enregistre en runtime ;
+- portail cree ;
+- portail present cote client ;
+- `PortalEntityRenderer.submit` appele ;
+- framebuffer minimal atteint ;
+- texture framebuffer disponible : `854x480` ;
+- quad `SubmitNodeCollector` soumis ;
+- erreurs `Missing program` : 0 dans le run final ;
+- capture obtenue :
+  `run/screenshots/phase8.2-iris-pipeline-override-audit.png` ;
+- traversee declenchee ;
+- `Client Teleported Statically` observe ;
+- fermeture normale ;
+- crash, erreur mixin bloquante, `UnsupportedOperationException`,
+  `Duplicate entity UUID`, `ConcurrentModificationException` et
+  `Buffer already closed` : 0.
+
+Limite restante : la capture automatique Phase 8.2 reste tres sombre et n'est
+pas concluante. Elle ne prouve pas que le portail est invisible : une
+observation interactive apres rotation de la camera a permis de voir le portail.
+Le blocage d'override Iris est corrige, mais l'audit visuel shaderpack doit
+continuer dans une phase separee.
+
+Rapport : `PHASE8.2_IRIS_PIPELINE_OVERRIDE_AUDIT.md`.
+
+### 8.3 Validation visuelle Iris avec shaderpack
+
+Etat :
+
+- vanilla compile : BUILD SUCCESSFUL ;
+- Sodium compile-only : BUILD SUCCESSFUL ;
+- Iris compile-only : BUILD SUCCESSFUL ;
+- runtime Iris + shaderpack + portail lance sur `Phase81IrisShaderpackPortalTest` ;
+- shaderpack actif : `MakeUp-UltraFast-9.5c.zip` ;
+- mapping Iris fallback enregistre ;
+- `PortalEntityRenderer.submit` appele ;
+- framebuffer minimal atteint ;
+- texture framebuffer disponible : `854x480` ;
+- depth mask applique ;
+- quad texture `SubmitNodeCollector` soumis ;
+- portail present cote client sous Sodium/Iris ;
+- capture automatique obtenue :
+  `run/screenshots/phase8.3-iris-shaderpack-visual-validation.png` ;
+- capture automatique concluante : non, image encore trop sombre ;
+- observation interactive precedente apres rotation camera : portail vu ;
+- traversee observee dans le run visuel : `Client Teleported Statically` ;
+- erreurs `Missing program` : 0 ;
+- crash, `Duplicate entity UUID`, `ConcurrentModificationException`,
+  `Buffer already closed` et `UnsupportedOperationException` : 0.
+
+Conclusion : le correctif Phase 8.2 reste valide et le portail fonctionne sous
+Iris avec shaderpack. La preuve automatique reste insuffisante : la capture est
+trop sombre et doit etre amelioree ou remplacee par une capture F2 manuelle
+fiable. Aucun changement renderer n'a ete effectue pendant cette phase.
+
+Rapport : `PHASE8.3_IRIS_SHADERPACK_VISUAL_VALIDATION.md`.
+
+### 8.4 Preuve visuelle manuelle Iris avec shaderpack
+
+Etat :
+
+- aucun changement de renderer ;
+- aucun changement des mappings Iris Phase 8.2 ;
+- aucun changement de pipeline ;
+- shader clipping, Sodium shader mixins, DimLib, AlternateDimensions et renderer
+  Iris avance toujours inactifs ;
+- run final Iris + shaderpack + portail : BUILD SUCCESSFUL ;
+- shaderpack actif : `MakeUp-UltraFast-9.5c.zip` ;
+- mapping Iris fallback enregistre ;
+- `PortalEntityRenderer.submit` appele ;
+- framebuffer minimal atteint ;
+- texture framebuffer disponible : `854x480` ;
+- depth mask applique ;
+- quad texture `SubmitNodeCollector` soumis ;
+- portail cree par commande dev ;
+- portail present cote client sous Sodium/Iris ;
+- erreurs `Missing program` : 0 ;
+- crash, `Duplicate entity UUID`, `ConcurrentModificationException`,
+  `Buffer already closed` et `UnsupportedOperationException` : 0.
+
+Captures :
+
+- captures F2 locales obtenues :
+  `run/screenshots/2026-06-28_20.01.16.png` et
+  `run/screenshots/2026-06-28_20.03.33.png` ;
+- ces captures locales ne cadrent pas clairement le portail ;
+- preuve visuelle fiable : capture manuelle fournie dans le chat pendant la
+  Phase 8.4, montrant le cadre cyan et la texture framebuffer/shaderpack dans le
+  portail.
+
+Conclusion : le portail Iris avec shaderpack est visible en observation
+interactive. La capture automatique reste imparfaite, mais le probleme n'est
+plus classe comme invisibilite du portail.
+
+Rapport : `PHASE8.4_IRIS_SHADERPACK_MANUAL_VISUAL_PROOF.md`.

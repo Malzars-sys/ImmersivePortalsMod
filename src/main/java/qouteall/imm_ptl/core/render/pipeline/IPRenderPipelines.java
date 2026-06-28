@@ -20,6 +20,8 @@ import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.EnumMap;
 import java.util.Map;
@@ -32,6 +34,7 @@ import java.util.Optional;
  * Transition point between the removed ShaderInstance path and the 26.1 pipeline API.
  */
 public final class IPRenderPipelines {
+    private static final Logger LOGGER = LoggerFactory.getLogger("IPRenderPipelines");
     public static final String CLIPPING_EQUATION_UNIFORM = "iportal_ClippingEquation";
 
     public enum Slot {
@@ -108,6 +111,8 @@ public final class IPRenderPipelines {
                     .build()
             )
         );
+
+        registerIrisShaderpackFallbacks();
     }
 
     public static void register(Slot slot, RenderPipeline pipeline) {
@@ -299,6 +304,64 @@ public final class IPRenderPipelines {
         minimalPortalFramebufferRenderType = null;
         minimalPortalMaskedFramebufferRenderType = null;
         minimalPortalDepthMaskRenderType = null;
+    }
+
+    private static void registerIrisShaderpackFallbacks() {
+        try {
+            Class<?> irisPipelinesClass = Class.forName("net.irisshaders.iris.pipeline.IrisPipelines");
+            Class<?> shaderKeyClass = Class.forName("net.irisshaders.iris.pipeline.programs.ShaderKey");
+            java.lang.reflect.Method assignPipeline = irisPipelinesClass.getMethod(
+                "assignPipeline",
+                RenderPipeline.class,
+                shaderKeyClass
+            );
+
+            assignIrisPipeline(
+                assignPipeline,
+                shaderKeyClass,
+                PIPELINES.get(Slot.PORTAL_DEPTH_MASK),
+                "BASIC_COLOR"
+            );
+            assignIrisPipeline(
+                assignPipeline,
+                shaderKeyClass,
+                PIPELINES.get(Slot.DRAW_FRAMEBUFFER_IN_AREA),
+                "TEXTURED"
+            );
+            assignIrisPipeline(
+                assignPipeline,
+                shaderKeyClass,
+                PIPELINES.get(Slot.DRAW_FRAMEBUFFER_IN_AREA_DEPTH_MASKED),
+                "TEXTURED"
+            );
+
+            LOGGER.info(
+                "Registered Iris shaderpack fallback mappings for minimal portal pipelines"
+            );
+        }
+        catch (ClassNotFoundException ignored) {
+            // Iris is not present in the vanilla or Sodium-only profile.
+        }
+        catch (Throwable throwable) {
+            LOGGER.warn(
+                "Unable to register Iris shaderpack fallback mappings for minimal portal pipelines",
+                throwable
+            );
+        }
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static void assignIrisPipeline(
+        java.lang.reflect.Method assignPipeline,
+        Class<?> shaderKeyClass,
+        @Nullable RenderPipeline pipeline,
+        String shaderKeyName
+    ) throws ReflectiveOperationException {
+        if (pipeline == null) {
+            return;
+        }
+        Object shaderKey = Enum.valueOf((Class<? extends Enum>) shaderKeyClass, shaderKeyName);
+        assignPipeline.invoke(null, pipeline, shaderKey);
     }
 
     private static final class FramebufferTextureAlias extends AbstractTexture {
