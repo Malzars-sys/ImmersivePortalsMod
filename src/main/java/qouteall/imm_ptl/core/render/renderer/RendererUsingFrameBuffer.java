@@ -58,8 +58,12 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
     private static boolean loggedMinimalMaskAttempt;
     private static boolean loggedMinimalMaskApplied;
     private static boolean loggedMinimalMaskFallback;
+    private static boolean loggedNoDepthMaskExperiment;
+    private static boolean loggedFramebufferPipelineMode;
     private static boolean pendingMinimalRecursivePortalScreenshot;
     private static long minimalRecursivePortalScreenshotRequestedAt;
+    private static final boolean FORCE_FRAMEBUFFER_NO_DEPTH_MASK =
+        "true".equalsIgnoreCase(System.getenv("IMM_PTL_FORCE_FRAMEBUFFER_NO_DEPTH_MASK"));
     private final List<Portal> queuedMinimalPortals = new ArrayList<>();
     private int lastQueuedFrame = -1;
     private Portal renderedMinimalPortal;
@@ -370,7 +374,15 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
             );
         }
 
-        if (!loggedMinimalMaskAttempt) {
+        if (!loggedNoDepthMaskExperiment) {
+            loggedNoDepthMaskExperiment = true;
+            LOGGER.info(
+                "Minimal recursive portal no-depth-mask experiment active: {}",
+                FORCE_FRAMEBUFFER_NO_DEPTH_MASK
+            );
+        }
+
+        if (!FORCE_FRAMEBUFFER_NO_DEPTH_MASK && !loggedMinimalMaskAttempt) {
             loggedMinimalMaskAttempt = true;
             LOGGER.info("Minimal portal depth mask attempted: true");
         }
@@ -378,7 +390,10 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
         RenderType depthMaskRenderType = IPRenderPipelines.getMinimalPortalDepthMaskRenderType();
         RenderType maskedFramebufferRenderType =
             IPRenderPipelines.getMinimalPortalMaskedFramebufferRenderType(secondaryFrameBuffer.fb);
-        boolean useDepthMask = depthMaskRenderType != null && maskedFramebufferRenderType != null;
+        boolean useDepthMask =
+            !FORCE_FRAMEBUFFER_NO_DEPTH_MASK &&
+                depthMaskRenderType != null &&
+                maskedFramebufferRenderType != null;
         RenderType renderType = useDepthMask
             ? maskedFramebufferRenderType
             : IPRenderPipelines.getMinimalPortalFramebufferRenderType(secondaryFrameBuffer.fb);
@@ -399,6 +414,14 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
                 secondaryFrameBuffer.fb.width,
                 secondaryFrameBuffer.fb.height,
                 portal.getId()
+            );
+        }
+
+        if (!loggedFramebufferPipelineMode) {
+            loggedFramebufferPipelineMode = true;
+            LOGGER.info(
+                "Minimal recursive portal framebuffer pipeline mode: {}",
+                useDepthMask ? "depth-masked" : "non-depth-masked"
             );
         }
 

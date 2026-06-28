@@ -1987,3 +1987,64 @@ Recommandation Phase 9.1 : micro-experience unique et reversible pour forcer le
 quad framebuffer sans depth mask afin de confirmer ou non la piste profondeur.
 
 Rapport : `PHASE9.0_IRIS_SHADERPACK_FRAMEBUFFER_FLICKER_AUDIT.md`.
+
+### 9.1 Micro-experience framebuffer sans depth mask
+
+Objectif :
+
+Tester si le clignotement Complementary vient principalement du depth mask
+minimal `CompareOp.EQUAL`.
+
+Modification :
+
+- ajout du flag dev `IMM_PTL_FORCE_FRAMEBUFFER_NO_DEPTH_MASK=true` ;
+- portee limitee a `RendererUsingFrameBuffer` ;
+- comportement par defaut inchange quand le flag est absent ;
+- avec le flag : utilisation de `DRAW_FRAMEBUFFER_IN_AREA` et saut de la passe
+  `PORTAL_DEPTH_MASK` / `DRAW_FRAMEBUFFER_IN_AREA_DEPTH_MASKED`.
+
+Validation :
+
+- vanilla compile : BUILD SUCCESSFUL ;
+- Sodium compile-only : BUILD SUCCESSFUL ;
+- Iris compile-only : BUILD SUCCESSFUL.
+
+Runs :
+
+- MakeUp depth baseline :
+  - shaderpack : `MakeUp-UltraFast-9.5c.zip` ;
+  - flag : false ;
+  - pipeline : `depth-masked` ;
+  - framebuffer : `854x480` ;
+  - depth mask applique ;
+  - quad soumis ;
+  - BUILD SUCCESSFUL.
+- MakeUp no-depth-mask :
+  - shaderpack : `MakeUp-UltraFast-9.5c.zip` ;
+  - flag : true ;
+  - pipeline : `non-depth-masked` ;
+  - framebuffer : `854x480` ;
+  - quad soumis ;
+  - BUILD SUCCESSFUL.
+- Complementary depth baseline :
+  - shaderpack : `ComplementaryReimagined_r5.8.1.zip` ;
+  - flag : false ;
+  - pipeline : `depth-masked` ;
+  - framebuffer : `854x480` ;
+  - clignotement/intermittence deja reproduits ;
+  - BUILD SUCCESSFUL.
+- Complementary no-depth-mask :
+  - shaderpack : `ComplementaryReimagined_r5.8.1.zip` ;
+  - flag : true ;
+  - pipeline : `non-depth-masked` ;
+  - framebuffer : `854x480` ;
+  - capture F2 `run/screenshots/2026-06-28_20.52.46.png` montrant du contenu
+    framebuffer visible ;
+  - BUILD SUCCESSFUL.
+
+Conclusion : la piste depth mask / `CompareOp.EQUAL` est fortement confirmee.
+Le mode sans depth mask n'est pas un rendu final, mais il reduit le symptome
+principal sous Complementary et isole le probleme autour de la comparaison de
+profondeur shaderpack.
+
+Rapport : `PHASE9.1_IRIS_FRAMEBUFFER_NO_DEPTH_MASK_EXPERIMENT.md`.
