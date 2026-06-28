@@ -1898,3 +1898,40 @@ interactive. La capture automatique reste imparfaite, mais le probleme n'est
 plus classe comme invisibilite du portail.
 
 Rapport : `PHASE8.4_IRIS_SHADERPACK_MANUAL_VISUAL_PROOF.md`.
+
+### 8.6 Test deuxieme shaderpack Iris avec portail minimal
+
+Shaderpack teste :
+
+- `ComplementaryReimagined_r5.8.1.zip`
+
+Etat :
+
+- baseline de depart : `8c09eb37 Stabilize Iris shaderpack minimal portal rendering` ;
+- `run/config/iris.properties` bascule temporairement sur Complementary, puis
+  restaure sur `MakeUp-UltraFast-9.5c.zip` ;
+- vanilla compile : BUILD SUCCESSFUL ;
+- Sodium compile-only : BUILD SUCCESSFUL ;
+- Iris compile-only : BUILD SUCCESSFUL ;
+- monde de test : `Phase86IrisSecondShaderpackPortalTest`, copie nettoyee des
+  dossiers `entities` ;
+- Iris charge avec Complementary ;
+- mapping Iris fallback enregistre ;
+- erreurs `Missing program` : 0 ;
+- portail cree ;
+- portail present cote client ;
+- `PortalEntityRenderer.submit` appele ;
+- framebuffer minimal atteint ;
+- texture framebuffer disponible : `854x480` ;
+- depth mask applique ;
+- quad texture `SubmitNodeCollector` soumis ;
+- traversee confirmee : `Client Teleported Statically` ;
+- crash, `Duplicate entity UUID`, `ConcurrentModificationException`,
+  `Buffer already closed` et `UnsupportedOperationException` : 0.
+
+Observation visuelle : compatibilite partielle. Le cadre cyan est visible, mais
+le rendu framebuffer/shaderpack clignote et peut etre invisible au moment de la
+capture. Complementary n'est donc pas promu nouvelle baseline visuelle. MakeUp
+reste la baseline shaderpack validee.
+
+Rapport : `PHASE8.6_IRIS_SECOND_SHADERPACK_PORTAL_TEST.md`.
