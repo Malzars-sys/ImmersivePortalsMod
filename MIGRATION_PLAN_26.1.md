@@ -2316,3 +2316,73 @@ Etat final :
 - pas de changement du defaut global.
 
 Rapport : `PHASE9.4_IRIS_SHADERPACK_SAFE_FALLBACK_MODE.md`.
+
+### 9.5 Regression traversee Iris shaderpack fallback
+
+Objectif :
+
+Verifier que la baseline MakeUp `default` et le fallback manuel Complementary
+`no_depth` permettent toujours la traversee du portail.
+
+Validation compilation :
+
+- vanilla : BUILD SUCCESSFUL ;
+- Sodium compile-only : BUILD SUCCESSFUL ;
+- Iris compile-only : BUILD SUCCESSFUL.
+
+Tests runtime :
+
+- MakeUp default + traversee :
+  - monde : `Phase95MakeUpDefaultTraversal` ;
+  - shaderpack : `MakeUp-UltraFast-9.5c.zip` ;
+  - mode : `default` ;
+  - source : `default implicit` ;
+  - pipeline : `depth-masked-equal` ;
+  - framebuffer : `854x480` ;
+  - quad soumis ;
+  - portail present cote client ;
+  - `Client Teleported Statically` : oui.
+- Complementary no_depth + traversee :
+  - monde : `Phase95ComplementaryNoDepthTraversal` ;
+  - shaderpack : `ComplementaryReimagined_r5.8.1.zip` ;
+  - mode : `no_depth` ;
+  - source : `IMM_PTL_FRAMEBUFFER_DEPTH_MODE` ;
+  - pipeline : `non-depth-masked` ;
+  - warning compatibilite `no_depth` : oui ;
+  - framebuffer : `854x480` ;
+  - quad soumis ;
+  - portail present cote client ;
+  - `Client Teleported Statically` : oui.
+- Complementary alias historique + traversee :
+  - monde : `Phase95ComplementaryLegacyAliasTraversal` ;
+  - `IMM_PTL_FRAMEBUFFER_DEPTH_MODE` absent ;
+  - `IMM_PTL_FORCE_FRAMEBUFFER_NO_DEPTH_MASK=true` ;
+  - mode reel : `no_depth` ;
+  - source : `IMM_PTL_FORCE_FRAMEBUFFER_NO_DEPTH_MASK` ;
+  - pipeline : `non-depth-masked` ;
+  - framebuffer : `854x480` ;
+  - quad soumis ;
+  - portail present cote client ;
+  - `Client Teleported Statically` : oui.
+
+Erreurs runtime :
+
+- `Missing program` : 0 ;
+- `Buffer already closed` : 0 ;
+- `ConcurrentModificationException` : 0 ;
+- `Duplicate entity UUID` : 0 ;
+- `UnsupportedOperationException` : 0.
+
+Etat final :
+
+- `run/config/iris.properties` restaure sur `MakeUp-UltraFast-9.5c.zip` ;
+- aucun flag global laisse actif ;
+- pas de changement du defaut global ;
+- pas de promotion automatique de `no_depth`.
+
+Conclusion :
+
+Le fallback manuel `no_depth` est valide cote traversee/runtime sous
+Complementary, et la baseline MakeUp `default` reste saine.
+
+Rapport : `PHASE9.5_IRIS_SHADERPACK_FALLBACK_TRAVERSAL_REGRESSION.md`.
