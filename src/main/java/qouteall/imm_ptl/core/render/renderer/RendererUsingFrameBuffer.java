@@ -5,6 +5,7 @@ import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Screenshot;
+import net.minecraft.client.renderer.OrderedSubmitNodeCollector;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.world.phys.Vec3;
@@ -31,6 +32,8 @@ import qouteall.imm_ptl.core.render.context_management.RenderStates;
 import qouteall.imm_ptl.core.render.pipeline.IPRenderPipelines;
 import qouteall.q_misc_util.my_util.LimitedLogger;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -61,6 +64,8 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
     private static boolean loggedMinimalMaskFallback;
     private static boolean loggedNoDepthMaskExperiment;
     private static boolean loggedFramebufferPipelineMode;
+    private static boolean loggedFramebufferOrderMode;
+    private static boolean loggedActiveShaderpack;
     private static boolean pendingMinimalRecursivePortalScreenshot;
     private static long minimalRecursivePortalScreenshotRequestedAt;
     private static final boolean FORCE_FRAMEBUFFER_NO_DEPTH_MASK =
@@ -69,6 +74,10 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
         resolveFramebufferDepthMode();
     private static final FramebufferDepthMode FRAMEBUFFER_DEPTH_MODE =
         FRAMEBUFFER_DEPTH_MODE_SELECTION.mode();
+    private static final FramebufferOrderModeSelection FRAMEBUFFER_ORDER_MODE_SELECTION =
+        resolveFramebufferOrderMode();
+    private static final FramebufferOrderMode FRAMEBUFFER_ORDER_MODE =
+        FRAMEBUFFER_ORDER_MODE_SELECTION.mode();
     private final List<Portal> queuedMinimalPortals = new ArrayList<>();
     private int lastQueuedFrame = -1;
     private Portal renderedMinimalPortal;
@@ -113,6 +122,36 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
         String invalidValue
     ) {}
 
+    private enum FramebufferOrderMode {
+        DEFAULT("default", true, false, "current depth-mask-before-quad order"),
+        MASK_FIRST_EXPLICIT("mask_first_explicit", true, false, "explicit depth-mask-before-quad order"),
+        QUAD_FIRST("quad_first", true, true, "textured quad submitted before depth mask"),
+        NO_MASK_REFERENCE("no_mask_reference", false, false, "textured quad submitted without depth mask");
+
+        private final String id;
+        private final boolean allowDepthMask;
+        private final boolean quadFirst;
+        private final String description;
+
+        FramebufferOrderMode(
+            String id,
+            boolean allowDepthMask,
+            boolean quadFirst,
+            String description
+        ) {
+            this.id = id;
+            this.allowDepthMask = allowDepthMask;
+            this.quadFirst = quadFirst;
+            this.description = description;
+        }
+    }
+
+    private record FramebufferOrderModeSelection(
+        FramebufferOrderMode mode,
+        String source,
+        String invalidValue
+    ) {}
+
     private static FramebufferDepthModeSelection resolveFramebufferDepthMode() {
         String rawMode = System.getenv("IMM_PTL_FRAMEBUFFER_DEPTH_MODE");
         if (rawMode == null || rawMode.isBlank()) {
@@ -150,6 +189,43 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
         return new FramebufferDepthModeSelection(
             FramebufferDepthMode.DEFAULT,
             "invalid IMM_PTL_FRAMEBUFFER_DEPTH_MODE fallback",
+            rawMode
+        );
+    }
+
+    private static FramebufferOrderModeSelection resolveFramebufferOrderMode() {
+        String rawMode = System.getenv("IMM_PTL_FRAMEBUFFER_ORDER_MODE");
+        if (rawMode == null || rawMode.isBlank()) {
+            return new FramebufferOrderModeSelection(
+                FramebufferOrderMode.DEFAULT,
+                "default implicit",
+                null
+            );
+        }
+
+        String normalized = rawMode.trim().toLowerCase(Locale.ROOT).replace('-', '_');
+        FramebufferOrderMode mode = switch (normalized) {
+            case "default" -> FramebufferOrderMode.DEFAULT;
+            case "mask_first", "mask_first_explicit", "depth_first" ->
+                FramebufferOrderMode.MASK_FIRST_EXPLICIT;
+            case "quad_first", "framebuffer_first", "texture_first" ->
+                FramebufferOrderMode.QUAD_FIRST;
+            case "no_mask", "no_mask_reference", "quad_only" ->
+                FramebufferOrderMode.NO_MASK_REFERENCE;
+            default -> null;
+        };
+
+        if (mode != null) {
+            return new FramebufferOrderModeSelection(
+                mode,
+                "IMM_PTL_FRAMEBUFFER_ORDER_MODE",
+                null
+            );
+        }
+
+        return new FramebufferOrderModeSelection(
+            FramebufferOrderMode.DEFAULT,
+            "invalid IMM_PTL_FRAMEBUFFER_ORDER_MODE fallback",
             rawMode
         );
     }
@@ -484,7 +560,35 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
             }
         }
 
-        if (FRAMEBUFFER_DEPTH_MODE.usesDepthMask && !loggedMinimalMaskAttempt) {
+        if (!loggedFramebufferOrderMode) {
+            loggedFramebufferOrderMode = true;
+            if (FRAMEBUFFER_ORDER_MODE_SELECTION.invalidValue() != null) {
+                LOGGER.warn(
+                    "Unknown IMM_PTL_FRAMEBUFFER_ORDER_MODE '{}'; falling back to default mask-first order",
+                    FRAMEBUFFER_ORDER_MODE_SELECTION.invalidValue()
+                );
+            }
+            LOGGER.info(
+                "Minimal recursive portal framebuffer order mode: {} ({}, source: {})",
+                FRAMEBUFFER_ORDER_MODE.id,
+                FRAMEBUFFER_ORDER_MODE.description,
+                FRAMEBUFFER_ORDER_MODE_SELECTION.source()
+            );
+        }
+
+        if (!loggedActiveShaderpack) {
+            loggedActiveShaderpack = true;
+            LOGGER.info(
+                "Minimal recursive portal detected Iris shaderpack: {}",
+                getConfiguredIrisShaderpack()
+            );
+        }
+
+        if (
+            FRAMEBUFFER_DEPTH_MODE.usesDepthMask &&
+            FRAMEBUFFER_ORDER_MODE.allowDepthMask &&
+            !loggedMinimalMaskAttempt
+        ) {
             loggedMinimalMaskAttempt = true;
             LOGGER.info("Minimal portal depth mask attempted: true");
         }
@@ -494,6 +598,7 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
             FRAMEBUFFER_DEPTH_MODE.getFramebufferRenderType(secondaryFrameBuffer.fb);
         boolean useDepthMask =
             FRAMEBUFFER_DEPTH_MODE.usesDepthMask &&
+                FRAMEBUFFER_ORDER_MODE.allowDepthMask &&
                 depthMaskRenderType != null &&
                 maskedFramebufferRenderType != null;
         RenderType renderType = useDepthMask
@@ -529,17 +634,15 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
 
         try {
             if (useDepthMask) {
-                MyRenderHelper.submitPortalDepthMask(
-                    portal,
-                    poseStack,
-                    submitNodeCollector.order(0),
-                    depthMaskRenderType
-                );
+                if (!FRAMEBUFFER_ORDER_MODE.quadFirst) {
+                    submitPortalDepthMask(portal, poseStack, submitNodeCollector, depthMaskRenderType, 0);
+                }
                 if (!loggedMinimalMaskApplied) {
                     loggedMinimalMaskApplied = true;
                     LOGGER.info(
                         "Minimal portal depth mask applied: true " +
-                            "(depth-only rectangle followed by {} textured pass)",
+                            "({} order, {} textured pass)",
+                        FRAMEBUFFER_ORDER_MODE.id,
                         FRAMEBUFFER_DEPTH_MODE.depthTestName
                     );
                 }
@@ -558,9 +661,12 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
             MyRenderHelper.submitPortalAreaWithFramebuffer(
                 portal,
                 poseStack,
-                useDepthMask ? submitNodeCollector.order(1) : submitNodeCollector,
+                getFramebufferQuadCollector(submitNodeCollector, useDepthMask),
                 renderType
             );
+            if (useDepthMask && FRAMEBUFFER_ORDER_MODE.quadFirst) {
+                submitPortalDepthMask(portal, poseStack, submitNodeCollector, depthMaskRenderType, 1);
+            }
             pendingMinimalRecursivePortalScreenshot = true;
             if (!loggedSubmitNodeQuadSuccess) {
                 loggedSubmitNodeQuadSuccess = true;
@@ -580,6 +686,54 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
                 );
             }
         }
+    }
+
+    private OrderedSubmitNodeCollector getFramebufferQuadCollector(
+        SubmitNodeCollector submitNodeCollector,
+        boolean useDepthMask
+    ) {
+        if (!useDepthMask) {
+            return submitNodeCollector.order(0);
+        }
+        return FRAMEBUFFER_ORDER_MODE.quadFirst
+            ? submitNodeCollector.order(0)
+            : submitNodeCollector.order(1);
+    }
+
+    private void submitPortalDepthMask(
+        Portal portal,
+        PoseStack poseStack,
+        SubmitNodeCollector submitNodeCollector,
+        RenderType depthMaskRenderType,
+        int order
+    ) {
+        LOGGER.debug("Submitting minimal portal depth mask at SubmitNodeCollector order {}", order);
+        MyRenderHelper.submitPortalDepthMask(
+            portal,
+            poseStack,
+            submitNodeCollector.order(order),
+            depthMaskRenderType
+        );
+    }
+
+    private String getConfiguredIrisShaderpack() {
+        Path irisProperties = client.gameDirectory.toPath().resolve("config").resolve("iris.properties");
+        if (!Files.isRegularFile(irisProperties)) {
+            return "unavailable";
+        }
+        try {
+            for (String line : Files.readAllLines(irisProperties)) {
+                String trimmed = line.trim();
+                if (trimmed.startsWith("shaderPack=")) {
+                    String shaderpack = trimmed.substring("shaderPack=".length()).trim();
+                    return shaderpack.isEmpty() ? "disabled" : shaderpack;
+                }
+            }
+        }
+        catch (IOException exception) {
+            return "unavailable: " + exception.getClass().getSimpleName();
+        }
+        return "not configured";
     }
     
     @Override

@@ -2441,3 +2441,106 @@ Compilation :
 Non relancee pendant 10.0, car aucun code runtime n'a ete modifie.
 
 Rapport : `PHASE10.0_ADVANCED_RENDERING_CLIPPING_OCCLUSION_AUDIT.md`.
+
+### 10.1 Micro-audit ordre/profondeur du quad framebuffer
+
+Objectif :
+
+Auditer, uniquement en opt-in, l'ordre `SubmitNodeCollector` et le masque
+profondeur du quad framebuffer minimal.
+
+Modification :
+
+- ajout du flag dev `IMM_PTL_FRAMEBUFFER_ORDER_MODE` ;
+- modes disponibles :
+  - `default` : comportement historique, depth mask `order(0)` puis quad
+    framebuffer `order(1)` ;
+  - `mask_first_explicit` : meme ordre, force explicitement par flag ;
+  - `quad_first` : quad `order(0)`, depth mask `order(1)` ;
+  - `no_mask_reference` : quad sans depth mask, reference diagnostic ;
+- instrumentation non spammy :
+  - shaderpack detecte ;
+  - mode profondeur ;
+  - mode ordre ;
+  - pipeline ;
+  - framebuffer et taille ;
+  - depth mask tente/applique/fallback ;
+  - quad SubmitNodeCollector soumis.
+
+Comportement par defaut :
+
+- inchange si `IMM_PTL_FRAMEBUFFER_ORDER_MODE` est absent ;
+- `IMM_PTL_FRAMEBUFFER_DEPTH_MODE` conserve ses modes existants :
+  `default`, `no_depth`, `lequal`, `always` ;
+- `no_depth` reste manuel et non promu automatiquement.
+
+Validation compilation :
+
+- vanilla : BUILD SUCCESSFUL ;
+- Sodium compile-only : BUILD SUCCESSFUL ;
+- Iris compile-only : BUILD SUCCESSFUL.
+
+Tests runtime Iris + shaderpack :
+
+- MakeUp default reference :
+  - shaderpack : `MakeUp-UltraFast-9.5c.zip` ;
+  - depth mode : `default` ;
+  - order mode : `default` ;
+  - pipeline : `depth-masked-equal` ;
+  - framebuffer : `854x480` ;
+  - depth mask applique ;
+  - quad SubmitNodeCollector soumis ;
+  - BUILD SUCCESSFUL.
+- Complementary default reference :
+  - depth mode : `default` ;
+  - order mode : `default` ;
+  - pipeline : `depth-masked-equal` ;
+  - quad soumis ;
+  - BUILD SUCCESSFUL.
+- Complementary lequal reference :
+  - depth mode : `lequal` ;
+  - pipeline : `depth-masked-lequal` ;
+  - quad soumis ;
+  - BUILD SUCCESSFUL.
+- Complementary no_depth reference :
+  - depth mode : `no_depth` ;
+  - pipeline : `non-depth-masked` ;
+  - quad soumis ;
+  - BUILD SUCCESSFUL.
+- Complementary variantes opt-in :
+  - `default + mask_first_explicit` : BUILD SUCCESSFUL ;
+  - `lequal + mask_first_explicit` : BUILD SUCCESSFUL ;
+  - `default + quad_first` : BUILD SUCCESSFUL ;
+  - `default + no_mask_reference` : BUILD SUCCESSFUL.
+
+Erreurs runtime recherchees :
+
+- `Missing program` : 0 ;
+- `Buffer already closed` : 0 ;
+- `ConcurrentModificationException` : 0 ;
+- `Duplicate entity UUID` : 0 ;
+- `UnsupportedOperationException` : 0 ;
+- crash report : 0.
+
+Etat final :
+
+- `run/config/iris.properties` restaure sur `MakeUp-UltraFast-9.5c.zip` ;
+- aucun flag global laisse actif ;
+- pas de changement du defaut global ;
+- aucun stencil/shader clipping reactive ;
+- aucun renderer Iris legacy restaure.
+
+Conclusion :
+
+Les variantes d'ordre/profondeur sont techniquement sures et reversibles, mais
+aucune amelioration visuelle de Complementary n'est prouvee par les logs seuls.
+`quad_first` et `no_mask_reference` restent des diagnostics, pas des candidats a
+promotion automatique.
+
+Recommandation Phase 10.2 :
+
+- soit validation visuelle/video ciblee des variantes sous Complementary ;
+- soit micro-phase de clipping CPU limite, car l'ordre SubmitNodeCollector seul
+  ne resoud probablement pas les passes deferred/post-process du shaderpack.
+
+Rapport : `PHASE10.1_FRAMEBUFFER_ORDER_DEPTH_MICRO_AUDIT.md`.
