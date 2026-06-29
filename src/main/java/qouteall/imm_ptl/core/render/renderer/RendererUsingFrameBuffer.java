@@ -65,8 +65,10 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
     private static long minimalRecursivePortalScreenshotRequestedAt;
     private static final boolean FORCE_FRAMEBUFFER_NO_DEPTH_MASK =
         "true".equalsIgnoreCase(System.getenv("IMM_PTL_FORCE_FRAMEBUFFER_NO_DEPTH_MASK"));
-    private static final FramebufferDepthMode FRAMEBUFFER_DEPTH_MODE =
+    private static final FramebufferDepthModeSelection FRAMEBUFFER_DEPTH_MODE_SELECTION =
         resolveFramebufferDepthMode();
+    private static final FramebufferDepthMode FRAMEBUFFER_DEPTH_MODE =
+        FRAMEBUFFER_DEPTH_MODE_SELECTION.mode();
     private final List<Portal> queuedMinimalPortals = new ArrayList<>();
     private int lastQueuedFrame = -1;
     private Portal renderedMinimalPortal;
@@ -105,20 +107,51 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
         }
     }
 
-    private static FramebufferDepthMode resolveFramebufferDepthMode() {
+    private record FramebufferDepthModeSelection(
+        FramebufferDepthMode mode,
+        String source,
+        String invalidValue
+    ) {}
+
+    private static FramebufferDepthModeSelection resolveFramebufferDepthMode() {
         String rawMode = System.getenv("IMM_PTL_FRAMEBUFFER_DEPTH_MODE");
         if (rawMode == null || rawMode.isBlank()) {
-            return FORCE_FRAMEBUFFER_NO_DEPTH_MASK ? FramebufferDepthMode.NO_DEPTH : FramebufferDepthMode.DEFAULT;
+            if (FORCE_FRAMEBUFFER_NO_DEPTH_MASK) {
+                return new FramebufferDepthModeSelection(
+                    FramebufferDepthMode.NO_DEPTH,
+                    "IMM_PTL_FORCE_FRAMEBUFFER_NO_DEPTH_MASK",
+                    null
+                );
+            }
+            return new FramebufferDepthModeSelection(
+                FramebufferDepthMode.DEFAULT,
+                "default implicit",
+                null
+            );
         }
 
         String normalized = rawMode.trim().toLowerCase(Locale.ROOT).replace('-', '_');
-        return switch (normalized) {
+        FramebufferDepthMode mode = switch (normalized) {
             case "default", "depth_mask", "depth_masked", "equal" -> FramebufferDepthMode.DEFAULT;
             case "no_depth", "none", "disabled", "off" -> FramebufferDepthMode.NO_DEPTH;
             case "lequal", "less_equal", "less_or_equal" -> FramebufferDepthMode.LEQUAL;
             case "always", "always_depth" -> FramebufferDepthMode.ALWAYS;
-            default -> FORCE_FRAMEBUFFER_NO_DEPTH_MASK ? FramebufferDepthMode.NO_DEPTH : FramebufferDepthMode.DEFAULT;
+            default -> null;
         };
+
+        if (mode != null) {
+            return new FramebufferDepthModeSelection(
+                mode,
+                "IMM_PTL_FRAMEBUFFER_DEPTH_MODE",
+                null
+            );
+        }
+
+        return new FramebufferDepthModeSelection(
+            FramebufferDepthMode.DEFAULT,
+            "invalid IMM_PTL_FRAMEBUFFER_DEPTH_MODE fallback",
+            rawMode
+        );
     }
 
     public void queueMinimalPortalFromEntityRenderer(Portal portal) {
@@ -432,11 +465,23 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
                 "Minimal recursive portal legacy no-depth-mask experiment active: {}",
                 FORCE_FRAMEBUFFER_NO_DEPTH_MASK
             );
+            if (FRAMEBUFFER_DEPTH_MODE_SELECTION.invalidValue() != null) {
+                LOGGER.warn(
+                    "Unknown IMM_PTL_FRAMEBUFFER_DEPTH_MODE '{}'; falling back to default depth-masked-equal",
+                    FRAMEBUFFER_DEPTH_MODE_SELECTION.invalidValue()
+                );
+            }
             LOGGER.info(
-                "Minimal recursive portal framebuffer depth mode: {} (depth test: {})",
+                "Minimal recursive portal framebuffer depth mode: {} (depth test: {}, source: {})",
                 FRAMEBUFFER_DEPTH_MODE.id,
-                FRAMEBUFFER_DEPTH_MODE.depthTestName
+                FRAMEBUFFER_DEPTH_MODE.depthTestName,
+                FRAMEBUFFER_DEPTH_MODE_SELECTION.source()
             );
+            if (FRAMEBUFFER_DEPTH_MODE == FramebufferDepthMode.NO_DEPTH) {
+                LOGGER.warn(
+                    "Minimal recursive portal no_depth is a compatibility fallback and may reduce portal occlusion."
+                );
+            }
         }
 
         if (FRAMEBUFFER_DEPTH_MODE.usesDepthMask && !loggedMinimalMaskAttempt) {

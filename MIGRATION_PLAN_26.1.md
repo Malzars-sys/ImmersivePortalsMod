@@ -2241,3 +2241,78 @@ quantifier la frequence du clignotement, mais les captures fixes suffisent a
 classer `lequal` comme intermittent.
 
 Rapport : `PHASE9.3B_IRIS_LEQUAL_MANUAL_VISUAL_PROOF.md`.
+
+### 9.4 Formalisation du fallback shaderpack-safe no_depth
+
+Objectif :
+
+Formaliser `no_depth` comme fallback manuel shaderpack-safe, sans changer le
+mode par defaut global.
+
+Modification :
+
+- parsing explicite de `IMM_PTL_FRAMEBUFFER_DEPTH_MODE` ;
+- logs non spammy indiquant :
+  - mode choisi ;
+  - test de profondeur ;
+  - origine du mode ;
+- warning unique si `no_depth` est actif :
+  - fallback compatibilite ;
+  - occlusion potentiellement reduite ;
+- warning unique et fallback `default` pour valeur invalide ;
+- compatibilite conservee avec
+  `IMM_PTL_FORCE_FRAMEBUFFER_NO_DEPTH_MASK=true` comme alias de `no_depth` si
+  `IMM_PTL_FRAMEBUFFER_DEPTH_MODE` n'est pas defini.
+
+Modes conserves :
+
+- `default` : baseline historique, depth mask + `EQUAL` ;
+- `no_depth` : fallback shaderpack-safe manuel, robuste mais occlusion reduite ;
+- `lequal` : visible mais intermittent sous Complementary ;
+- `always` : diagnostic seulement.
+
+Validation compilation :
+
+- vanilla : BUILD SUCCESSFUL ;
+- Sodium compile-only : BUILD SUCCESSFUL ;
+- Iris compile-only : BUILD SUCCESSFUL.
+
+Tests runtime :
+
+- MakeUp default :
+  - source : `default implicit` ;
+  - pipeline : `depth-masked-equal` ;
+  - framebuffer : `854x480` ;
+  - quad soumis ;
+  - portail present cote client.
+- Complementary no_depth :
+  - source : `IMM_PTL_FRAMEBUFFER_DEPTH_MODE` ;
+  - warning fallback compatibilite : oui ;
+  - pipeline : `non-depth-masked` ;
+  - framebuffer : `854x480` ;
+  - quad soumis ;
+  - portail present cote client.
+- Valeur invalide `banana` :
+  - warning unique : oui ;
+  - fallback : `default` ;
+  - source : `invalid IMM_PTL_FRAMEBUFFER_DEPTH_MODE fallback` ;
+  - pipeline : `depth-masked-equal` ;
+  - quad soumis ;
+  - portail present cote client.
+
+Erreurs runtime :
+
+- `Missing program` : 0 ;
+- `Buffer already closed` : 0 ;
+- `ConcurrentModificationException` : 0 ;
+- `Duplicate entity UUID` : 0 ;
+- `UnsupportedOperationException` : 0.
+
+Etat final :
+
+- `run/config/iris.properties` restaure sur `MakeUp-UltraFast-9.5c.zip` ;
+- aucun flag global laisse actif ;
+- pas de promotion automatique de `no_depth` ;
+- pas de changement du defaut global.
+
+Rapport : `PHASE9.4_IRIS_SHADERPACK_SAFE_FALLBACK_MODE.md`.
