@@ -2117,3 +2117,127 @@ conserve le masque profondeur tout en evitant la comparaison stricte `EQUAL`.
 `always` reste un mode de diagnostic permissif.
 
 Rapport : `PHASE9.2_IRIS_SHADERPACK_SAFE_DEPTH_MODES.md`.
+
+### 9.3 Validation visuelle du mode LEQUAL shaderpack-safe
+
+Objectif :
+
+Valider visuellement si `IMM_PTL_FRAMEBUFFER_DEPTH_MODE=lequal` peut devenir le
+candidat shaderpack-safe principal pour Iris + Complementary, sans changer le
+mode par defaut global.
+
+Etat :
+
+- aucun changement de code renderer ;
+- `run/config/iris.properties` verifie au depart et restaure a la fin sur
+  `MakeUp-UltraFast-9.5c.zip` ;
+- Sodium shader mixins, Iris renderer avance, shader clipping, DimLib et
+  AlternateDimensions restent inactifs.
+
+Mondes prepares :
+
+- `Phase93MakeUpDefaultVisual` ;
+- `Phase93ComplementaryDefaultVisual` ;
+- `Phase93ComplementaryLequalVisual` ;
+- `Phase93ComplementaryNoDepthVisual`.
+
+Runs :
+
+- MakeUp `default` :
+  - shaderpack : `MakeUp-UltraFast-9.5c.zip` ;
+  - pipeline : `depth-masked-equal` ;
+  - framebuffer : `854x480` ;
+  - quad soumis ;
+  - portail present cote client.
+- Complementary `default` :
+  - pipeline : `depth-masked-equal` ;
+  - framebuffer : `854x480` ;
+  - quad soumis ;
+  - portail present cote client.
+- Complementary `lequal` :
+  - pipeline : `depth-masked-lequal` ;
+  - framebuffer : `854x480` ;
+  - quad soumis ;
+  - portail present cote client.
+- Complementary `no_depth` :
+  - pipeline : `non-depth-masked` ;
+  - framebuffer : `854x480` ;
+  - quad soumis ;
+  - portail present cote client.
+
+Erreurs runtime :
+
+- `Buffer already closed` : 0 ;
+- `ConcurrentModificationException` : 0 ;
+- `Duplicate entity UUID` : 0 ;
+- `UnsupportedOperationException` : 0 ;
+- `Missing program` : 0.
+
+Captures :
+
+- captures F2 obtenues pour Complementary `default` et `lequal`, mais elles sont
+  non concluantes car prises sur `Loading terrain...` ;
+- tentatives de capture Windows non retenues comme preuve visuelle : une capture
+  a pris une autre fenetre, l'autre a pris un onglet terminal intitule par le
+  run au lieu de la surface Minecraft.
+
+Conclusion :
+
+`lequal` est valide techniquement au runtime et reste le meilleur candidat
+shaderpack-safe, mais la preuve visuelle de stabilisation du clignotement sous
+Complementary manque encore. Ne pas promouvoir `lequal` comme defaut global
+avant une validation manuelle fiable de la fenetre Minecraft au premier plan.
+`no_depth` reste le fallback robuste connu.
+
+Rapport : `PHASE9.3_IRIS_LEQUAL_VISUAL_VALIDATION.md`.
+
+### 9.3B Preuve visuelle manuelle LEQUAL sous Complementary
+
+Objectif :
+
+Obtenir une preuve visuelle manuelle fiable du portail sous Complementary avec
+`IMM_PTL_FRAMEBUFFER_DEPTH_MODE=lequal`.
+
+Run :
+
+- monde : `Phase93ComplementaryLequalVisual` ;
+- shaderpack : `ComplementaryReimagined_r5.8.1.zip` ;
+- mode : `lequal` ;
+- pipeline : `depth-masked-lequal` ;
+- framebuffer : `854x480` ;
+- quad SubmitNodeCollector soumis ;
+- portail present cote client.
+
+Captures F2 retenues :
+
+- `run/screenshots/2026-06-29_02.00.30.png` :
+  - portail visible ;
+  - cadre cyan visible ;
+  - contenu framebuffer visible.
+- `run/screenshots/2026-06-29_02.00.30_2.png` :
+  - frame sans portail/framebuffer visible.
+- `run/screenshots/2026-06-29_02.03.31.png` :
+  - frame sans portail/framebuffer visible.
+
+Resultat :
+
+- `lequal` visible : oui ;
+- `lequal` stable : non, intermittent ;
+- clignotement : encore present ;
+- occlusion utile : partielle/non fiable a cause de l'intermittence ;
+- `Missing program` : 0 ;
+- `Buffer already closed` : 0 ;
+- `ConcurrentModificationException` : 0 ;
+- `Duplicate entity UUID` : 0 ;
+- `UnsupportedOperationException` : 0.
+
+Conclusion :
+
+`lequal` atteint bien le rendu visuel sous Complementary mais ne stabilise pas le
+contenu framebuffer. Il ne doit pas etre promu comme defaut global ni comme
+strategie automatique. `no_depth` reste le fallback shaderpack-safe le plus
+robuste connu, avec une occlusion moins stricte. Une video serait utile pour
+quantifier la frequence du clignotement, mais les captures fixes suffisent a
+classer `lequal` comme intermittent.
+
+Rapport : `PHASE9.3B_IRIS_LEQUAL_MANUAL_VISUAL_PROOF.md`.
