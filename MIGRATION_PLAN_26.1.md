@@ -2386,3 +2386,58 @@ Le fallback manuel `no_depth` est valide cote traversee/runtime sous
 Complementary, et la baseline MakeUp `default` reste saine.
 
 Rapport : `PHASE9.5_IRIS_SHADERPACK_FALLBACK_TRAVERSAL_REGRESSION.md`.
+
+### 10.0 Audit rendu avance, clipping et occlusion propre
+
+Objectif :
+
+Auditer la suite technique apres la baseline Iris shaderpack fallback, sans
+modifier le renderer ni reactiver les chemins avances.
+
+Etat de depart :
+
+- baseline vanilla : `5545115e` ;
+- baseline Sodium non-shader : `545169c1` ;
+- baseline Iris shaderpack minimal : `8c09eb37` ;
+- baseline Iris shaderpack fallback : `404c5000` ;
+- MakeUp reste le shaderpack par defaut dans `run/config/iris.properties` ;
+- aucun flag global de test laisse actif ;
+- modes framebuffer conserves :
+  - `default` -> `depth-masked-equal` ;
+  - `no_depth` -> fallback manuel shaderpack-safe ;
+  - `lequal` -> visible mais intermittent sous Complementary ;
+  - `always` -> diagnostic.
+
+Constat :
+
+- le chemin framebuffer minimal + `SubmitNodeCollector` est sain ;
+- le rendu destination est visible et traversable ;
+- le fallback cyan reste conserve ;
+- le prefiltrage CPU de `FrontClipping` ne clippe que des cas limites ;
+- `GL_CLIP_PLANE0` seul reste insuffisant avec les shaders 26.1 ;
+- `DepthStencilState` public expose la profondeur utile, mais pas un stencil
+  exploitable pour le masque complet ;
+- l'ancien `RendererUsingStencil` repose sur des manipulations GL directes trop
+  risquees pour etre reactive brutalement ;
+- les renderers Iris legacy restent volontairement no-op ;
+- les mixins shader Sodium, shader clipping, fog avance et DimLib restent
+  exclus.
+
+Decision :
+
+Ne pas commencer maintenant le shader clipping global ni l'ancien stencil avance.
+La prochaine phase recommandee est une micro-phase `10.1` limitee a l'ordre et a
+la profondeur du quad framebuffer :
+
+- instrumentation non spammy ;
+- aucune modification du defaut global ;
+- aucune promotion automatique de `no_depth` ;
+- tests MakeUp `default` et Complementary `default` / `lequal` / `no_depth` ;
+- variantes opt-in seulement ;
+- fallback cyan conserve.
+
+Compilation :
+
+Non relancee pendant 10.0, car aucun code runtime n'a ete modifie.
+
+Rapport : `PHASE10.0_ADVANCED_RENDERING_CLIPPING_OCCLUSION_AUDIT.md`.
