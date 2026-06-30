@@ -3244,3 +3244,92 @@ Recommandation Phase 11.1 :
   - ne pas changer le comportement runtime.
 
 Rapport : `PHASE11.0_POST_SHADERPACK_FREEZE_DECISION_AUDIT.md`.
+
+### 11.1 Documentation utilisateur shaderpack et inventaire des flags
+
+Objectif :
+
+- documenter les fallbacks shaderpack utilisables par les testeurs ;
+- inventorier les flags `IMM_PTL_*` ;
+- separer flags utilisateur, debug/dev, experimentaux et alias legacy ;
+- ne modifier aucun comportement runtime.
+
+Etat verifie :
+
+- commit Phase 10.8 present :
+  `5c4b7dcf Freeze Phase 10 shaderpack rendering baseline` ;
+- commit Phase 11.0 present :
+  `cf52c2b9 Document post shaderpack freeze decision audit` ;
+- `run/config/iris.properties` sur
+  `shaderPack=MakeUp-UltraFast-9.5c.zip` ;
+- aucun flag global `IMM_PTL_*` actif ;
+- aucun process Phase 10.x / 11.x `runClient` actif.
+
+Inventaire realise depuis :
+
+- `src/main/java` ;
+- `src/main/resources` ;
+- rapports Phase 9-11 ;
+- `MIGRATION_PLAN_26.1.md`.
+
+Flags d'environnement inventories :
+
+- `IMM_PTL_FRAMEBUFFER_DEPTH_MODE` ;
+- `IMM_PTL_FRAMEBUFFER_ORDER_MODE` ;
+- `IMM_PTL_PORTAL_CPU_CLIP_MODE` ;
+- `IMM_PTL_NO_DEPTH_GEOMETRIC_CLIP` ;
+- `IMM_PTL_FRAMEBUFFER_MASK_MODE` ;
+- `IMM_PTL_FORCE_FRAMEBUFFER_NO_DEPTH_MASK` ;
+- `IMM_PTL_AUTO_VISIBLE_TEST_PORTAL` ;
+- `IMM_PTL_AUTO_MINIMAL_TRAVERSAL_TEST` ;
+- `IMM_PTL_CAPTURE_MINIMAL_RECURSIVE_PORTAL` ;
+- `IMM_PTL_MINIMAL_RECURSIVE_PORTAL_SCREENSHOT`.
+
+Note :
+
+- `IMM_PTL_LOG_COUNTER` existe dans `MixinEntity.java`, mais c'est un champ
+  statique interne, pas un flag d'environnement.
+
+Classification :
+
+- utilisateur/testeur :
+  - `IMM_PTL_FRAMEBUFFER_DEPTH_MODE=no_depth` pour fallback manuel Complementary.
+- debug/dev :
+  - `IMM_PTL_AUTO_VISIBLE_TEST_PORTAL` ;
+  - `IMM_PTL_AUTO_MINIMAL_TRAVERSAL_TEST` ;
+  - `IMM_PTL_CAPTURE_MINIMAL_RECURSIVE_PORTAL` ;
+  - `IMM_PTL_MINIMAL_RECURSIVE_PORTAL_SCREENSHOT`.
+- experimental dangereux :
+  - `IMM_PTL_FRAMEBUFFER_ORDER_MODE` ;
+  - `IMM_PTL_PORTAL_CPU_CLIP_MODE` ;
+  - `IMM_PTL_FRAMEBUFFER_MASK_MODE=alpha_texture` ;
+  - `IMM_PTL_FRAMEBUFFER_DEPTH_MODE=lequal|always`.
+- alias legacy :
+  - `IMM_PTL_FORCE_FRAMEBUFFER_NO_DEPTH_MASK` ;
+  - `IMM_PTL_NO_DEPTH_GEOMETRIC_CLIP`.
+
+Documentation creee :
+
+- `SHADERPACK_FALLBACKS_26.1.md` :
+  - MakeUp comme baseline stable ;
+  - Complementary `no_depth` comme fallback manuel robuste ;
+  - `alpha_texture` comme mode experimental incomplet ;
+  - `lequal` comme intermittent/non recommande ;
+  - recettes simples et retour au defaut.
+- `IMM_PTL_DEV_FLAGS_26.1.md` :
+  - valeurs connues ;
+  - defaut ;
+  - categorie ;
+  - phase d'introduction ;
+  - effet ;
+  - risques ;
+  - statut.
+
+Validation :
+
+- aucune compilation relancee, car Markdown uniquement ;
+- aucun `runClient` lance ;
+- aucun fichier Java, mixin, shader, pipeline, Gradle ou ressource runtime
+  modifie.
+
+Rapport : `PHASE11.1_SHADERPACK_DOCS_AND_FLAGS_INVENTORY.md`.
