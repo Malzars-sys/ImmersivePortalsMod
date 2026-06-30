@@ -71,6 +71,11 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
     private static boolean loggedPortalCpuClipBounds;
     private static boolean loggedPortalCpuClipInvalid;
     private static boolean loggedPortalCpuClipApplied;
+    private static boolean loggedFramebufferMaskMode;
+    private static boolean loggedFramebufferMaskIgnored;
+    private static boolean loggedFramebufferMaskAttempt;
+    private static boolean loggedFramebufferMaskSuccess;
+    private static boolean loggedFramebufferMaskFallback;
     private static boolean pendingMinimalRecursivePortalScreenshot;
     private static long minimalRecursivePortalScreenshotRequestedAt;
     private static final boolean FORCE_FRAMEBUFFER_NO_DEPTH_MASK =
@@ -87,6 +92,10 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
         resolvePortalCpuClipMode();
     private static final PortalCpuClipMode PORTAL_CPU_CLIP_MODE =
         PORTAL_CPU_CLIP_MODE_SELECTION.mode();
+    private static final FramebufferMaskModeSelection FRAMEBUFFER_MASK_MODE_SELECTION =
+        resolveFramebufferMaskMode();
+    private static final FramebufferMaskMode FRAMEBUFFER_MASK_MODE =
+        FRAMEBUFFER_MASK_MODE_SELECTION.mode();
     private final List<Portal> queuedMinimalPortals = new ArrayList<>();
     private int lastQueuedFrame = -1;
     private Portal renderedMinimalPortal;
@@ -180,6 +189,23 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
 
     private record PortalCpuClipModeSelection(
         PortalCpuClipMode mode,
+        String source,
+        String invalidValue
+    ) {}
+
+    private enum FramebufferMaskMode {
+        OFF("off"),
+        ALPHA_TEXTURE("alpha_texture");
+
+        private final String id;
+
+        FramebufferMaskMode(String id) {
+            this.id = id;
+        }
+    }
+
+    private record FramebufferMaskModeSelection(
+        FramebufferMaskMode mode,
         String source,
         String invalidValue
     ) {}
@@ -303,6 +329,38 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
         return new PortalCpuClipModeSelection(
             PortalCpuClipMode.OFF,
             "invalid IMM_PTL_PORTAL_CPU_CLIP_MODE fallback",
+            rawMode
+        );
+    }
+
+    private static FramebufferMaskModeSelection resolveFramebufferMaskMode() {
+        String rawMode = System.getenv("IMM_PTL_FRAMEBUFFER_MASK_MODE");
+        if (rawMode == null || rawMode.isBlank()) {
+            return new FramebufferMaskModeSelection(
+                FramebufferMaskMode.OFF,
+                "default implicit",
+                null
+            );
+        }
+
+        String normalized = rawMode.trim().toLowerCase(Locale.ROOT).replace('-', '_');
+        FramebufferMaskMode mode = switch (normalized) {
+            case "off", "false", "disabled", "none" -> FramebufferMaskMode.OFF;
+            case "alpha_texture", "alpha", "texture_mask" -> FramebufferMaskMode.ALPHA_TEXTURE;
+            default -> null;
+        };
+
+        if (mode != null) {
+            return new FramebufferMaskModeSelection(
+                mode,
+                "IMM_PTL_FRAMEBUFFER_MASK_MODE",
+                null
+            );
+        }
+
+        return new FramebufferMaskModeSelection(
+            FramebufferMaskMode.OFF,
+            "invalid IMM_PTL_FRAMEBUFFER_MASK_MODE fallback",
             rawMode
         );
     }
@@ -662,6 +720,7 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
         }
 
         logPortalCpuClipMode();
+        logFramebufferMaskMode();
 
         if (
             FRAMEBUFFER_DEPTH_MODE.usesDepthMask &&
@@ -680,9 +739,7 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
                 FRAMEBUFFER_ORDER_MODE.allowDepthMask &&
                 depthMaskRenderType != null &&
                 maskedFramebufferRenderType != null;
-        RenderType renderType = useDepthMask
-            ? maskedFramebufferRenderType
-            : IPRenderPipelines.getMinimalPortalFramebufferRenderType(secondaryFrameBuffer.fb);
+        RenderType renderType = getFramebufferRenderType(useDepthMask, maskedFramebufferRenderType);
         if (renderType == null) {
             if (!loggedSubmitNodeQuadFallback) {
                 loggedSubmitNodeQuadFallback = true;
@@ -711,7 +768,7 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
             loggedFramebufferPipelineMode = true;
             LOGGER.info(
                 "Minimal recursive portal framebuffer pipeline mode: {}",
-                useDepthMask ? FRAMEBUFFER_DEPTH_MODE.pipelineModeName : "non-depth-masked"
+                getFramebufferPipelineModeName(useDepthMask)
             );
         }
 
@@ -787,6 +844,78 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
             PORTAL_CPU_CLIP_MODE.id,
             PORTAL_CPU_CLIP_MODE_SELECTION.source()
         );
+    }
+
+    private void logFramebufferMaskMode() {
+        if (loggedFramebufferMaskMode) {
+            return;
+        }
+        loggedFramebufferMaskMode = true;
+        if (FRAMEBUFFER_MASK_MODE_SELECTION.invalidValue() != null) {
+            LOGGER.warn(
+                "Unknown IMM_PTL_FRAMEBUFFER_MASK_MODE '{}'; falling back to off",
+                FRAMEBUFFER_MASK_MODE_SELECTION.invalidValue()
+            );
+        }
+        LOGGER.info(
+            "Minimal recursive portal framebuffer mask mode: {} (source: {})",
+            FRAMEBUFFER_MASK_MODE.id,
+            FRAMEBUFFER_MASK_MODE_SELECTION.source()
+        );
+    }
+
+    private RenderType getFramebufferRenderType(
+        boolean useDepthMask,
+        RenderType maskedFramebufferRenderType
+    ) {
+        if (useDepthMask) {
+            if (FRAMEBUFFER_MASK_MODE == FramebufferMaskMode.ALPHA_TEXTURE && !loggedFramebufferMaskIgnored) {
+                loggedFramebufferMaskIgnored = true;
+                LOGGER.info(
+                    "Minimal recursive portal alpha texture mask ignored: active only for non-depth-masked framebuffer modes"
+                );
+            }
+            return maskedFramebufferRenderType;
+        }
+
+        if (FRAMEBUFFER_MASK_MODE == FramebufferMaskMode.ALPHA_TEXTURE) {
+            if (!loggedFramebufferMaskAttempt) {
+                loggedFramebufferMaskAttempt = true;
+                LOGGER.info(
+                    "Minimal recursive portal alpha texture composition attempted: true"
+                );
+            }
+            RenderType alphaTextureRenderType =
+                IPRenderPipelines.getMinimalPortalAlphaTextureFramebufferRenderType(secondaryFrameBuffer.fb);
+            if (alphaTextureRenderType != null) {
+                if (!loggedFramebufferMaskSuccess) {
+                    loggedFramebufferMaskSuccess = true;
+                    LOGGER.info(
+                        "Minimal recursive portal alpha texture composition pipeline available: true"
+                    );
+                }
+                return alphaTextureRenderType;
+            }
+
+            if (!loggedFramebufferMaskFallback) {
+                loggedFramebufferMaskFallback = true;
+                LOGGER.info(
+                    "Minimal recursive portal alpha texture composition fallback: pipeline unavailable"
+                );
+            }
+        }
+
+        return IPRenderPipelines.getMinimalPortalFramebufferRenderType(secondaryFrameBuffer.fb);
+    }
+
+    private String getFramebufferPipelineModeName(boolean useDepthMask) {
+        if (useDepthMask) {
+            return FRAMEBUFFER_DEPTH_MODE.pipelineModeName;
+        }
+        if (FRAMEBUFFER_MASK_MODE == FramebufferMaskMode.ALPHA_TEXTURE && loggedFramebufferMaskSuccess) {
+            return "non-depth-masked-alpha-texture";
+        }
+        return "non-depth-masked";
     }
 
     private boolean validatePortalCpuClip(Portal portal, boolean useDepthMask) {

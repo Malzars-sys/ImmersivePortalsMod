@@ -2820,3 +2820,74 @@ Compilation :
 - non relancee, car aucun code runtime modifie.
 
 Rapport : `PHASE10.4_RENDER_GRAPH_STENCIL_LIKE_AUDIT.md`.
+
+### 10.5 Micro-prototype masque alpha texture pour framebuffer no_depth
+
+Objectif :
+
+- ajouter un prototype opt-in de composition alpha texture pour le chemin
+  framebuffer non-depth-masked ;
+- ne pas utiliser `glStencil*` ;
+- ne pas changer le defaut global ;
+- ne pas promouvoir `no_depth` ou `alpha_texture`.
+
+Flag ajoute :
+
+- `IMM_PTL_FRAMEBUFFER_MASK_MODE=off|alpha_texture` ;
+- defaut : `off` ;
+- valeur invalide : warning unique + fallback `off`.
+
+Implementation :
+
+- `IPRenderPipelines` :
+  - nouveau slot `DRAW_FRAMEBUFFER_IN_AREA_ALPHA_TEXTURE` ;
+  - pipeline `pipeline/imm_ptl_draw_framebuffer_in_area_alpha_texture` ;
+  - shader vanilla `core/position_tex` ;
+  - `BlendFunction.TRANSLUCENT` ;
+  - depth test `ALWAYS_PASS`, sans write depth ;
+  - mapping Iris reflectif vers `TEXTURED`.
+- `RendererUsingFrameBuffer` :
+  - resolution et logs du mode ;
+  - mode actif seulement si `useDepthMask == false` ;
+  - fallback vers le render type framebuffer existant si le pipeline manque ;
+  - mode ignore si le depth mask normal est actif.
+
+Limite :
+
+- ce prototype ne cree pas encore une texture masque separee ;
+- il teste seulement la plus petite passe alpha-aware possible sur le quad
+  framebuffer ;
+- un vrai masque texture demandera une cible supplementaire et une composition
+  dediee, plus risquee avec Iris shaderpacks.
+
+Validation compilation :
+
+- vanilla : BUILD SUCCESSFUL ;
+- Sodium compile-only : BUILD SUCCESSFUL ;
+- Iris compile-only : BUILD SUCCESSFUL.
+
+Validation runtime :
+
+- mondes Phase 10.5 prepares ;
+- tentative MakeUp default baseline lancee ;
+- le client ne s'est pas ferme automatiquement dans la fenetre de validation ;
+- le log runtime est tronque au lancement Gradle et non exploitable ;
+- runs Complementary non lances ensuite pour eviter de multiplier des logs
+  tronques ;
+- runtime Phase 10.5 : non concluant dans cette session.
+
+Etat final :
+
+- `run/config/iris.properties` restaure sur `MakeUp-UltraFast-9.5c.zip` ;
+- aucun flag global `IMM_PTL_*` laisse actif ;
+- aucun process `runClient` restant ;
+- `alpha_texture` reste experimental et non promu.
+
+Recommandation Phase 10.6 :
+
+- refaire une validation runtime manuelle/interactive de
+  `IMM_PTL_FRAMEBUFFER_MASK_MODE=alpha_texture` sous Complementary `no_depth` ;
+- si aucun gain visuel n'apparait, abandonner ce micro-mode et passer a un vrai
+  prototype texture masque separee + composition dediee.
+
+Rapport : `PHASE10.5_ALPHA_TEXTURE_MASK_PROTOTYPE.md`.

@@ -1,6 +1,7 @@
 package qouteall.imm_ptl.core.render.pipeline;
 
 import com.mojang.blaze3d.buffers.GpuBuffer;
+import com.mojang.blaze3d.pipeline.BlendFunction;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.pipeline.ColorTargetState;
@@ -42,6 +43,7 @@ public final class IPRenderPipelines {
         DRAW_FRAMEBUFFER_IN_AREA_DEPTH_MASKED,
         DRAW_FRAMEBUFFER_IN_AREA_DEPTH_LEQUAL,
         DRAW_FRAMEBUFFER_IN_AREA_DEPTH_ALWAYS,
+        DRAW_FRAMEBUFFER_IN_AREA_ALPHA_TEXTURE,
         PORTAL_DEPTH_MASK,
         PORTAL_AREA,
         BLIT_SCREEN_NO_BLEND,
@@ -56,6 +58,7 @@ public final class IPRenderPipelines {
     private static RenderType minimalPortalMaskedFramebufferRenderType;
     private static RenderType minimalPortalLequalFramebufferRenderType;
     private static RenderType minimalPortalAlwaysFramebufferRenderType;
+    private static RenderType minimalPortalAlphaTextureFramebufferRenderType;
     private static RenderType minimalPortalDepthMaskRenderType;
 
     private IPRenderPipelines() {
@@ -124,6 +127,24 @@ public final class IPRenderPipelines {
                     .withFragmentShader("core/position_tex")
                     .withSampler("Sampler0")
                     .withCull(false)
+                    .withDepthStencilState(new DepthStencilState(CompareOp.ALWAYS_PASS, false))
+                    .withVertexFormat(DefaultVertexFormat.POSITION_TEX, VertexFormat.Mode.TRIANGLES)
+                    .build()
+            )
+        );
+        register(
+            Slot.DRAW_FRAMEBUFFER_IN_AREA_ALPHA_TEXTURE,
+            RenderPipelines.register(
+                RenderPipeline.builder(RenderPipelines.MATRICES_PROJECTION_SNIPPET)
+                    .withLocation("pipeline/imm_ptl_draw_framebuffer_in_area_alpha_texture")
+                    .withVertexShader("core/position_tex")
+                    .withFragmentShader("core/position_tex")
+                    .withSampler("Sampler0")
+                    .withCull(false)
+                    .withColorTargetState(new ColorTargetState(
+                        Optional.of(BlendFunction.TRANSLUCENT),
+                        ColorTargetState.WRITE_ALL
+                    ))
                     .withDepthStencilState(new DepthStencilState(CompareOp.ALWAYS_PASS, false))
                     .withVertexFormat(DefaultVertexFormat.POSITION_TEX, VertexFormat.Mode.TRIANGLES)
                     .build()
@@ -264,6 +285,18 @@ public final class IPRenderPipelines {
         );
     }
 
+    public static @Nullable RenderType getMinimalPortalAlphaTextureFramebufferRenderType(
+        RenderTarget framebuffer
+    ) {
+        return getMinimalPortalDepthTestFramebufferRenderType(
+            framebuffer,
+            Slot.DRAW_FRAMEBUFFER_IN_AREA_ALPHA_TEXTURE,
+            "imm_ptl_minimal_portal_framebuffer_alpha_texture",
+            () -> minimalPortalAlphaTextureFramebufferRenderType,
+            renderType -> minimalPortalAlphaTextureFramebufferRenderType = renderType
+        );
+    }
+
     private static @Nullable RenderType getMinimalPortalDepthTestFramebufferRenderType(
         RenderTarget framebuffer,
         Slot slot,
@@ -376,6 +409,7 @@ public final class IPRenderPipelines {
         minimalPortalMaskedFramebufferRenderType = null;
         minimalPortalLequalFramebufferRenderType = null;
         minimalPortalAlwaysFramebufferRenderType = null;
+        minimalPortalAlphaTextureFramebufferRenderType = null;
         minimalPortalDepthMaskRenderType = null;
     }
 
@@ -417,6 +451,12 @@ public final class IPRenderPipelines {
                 assignPipeline,
                 shaderKeyClass,
                 PIPELINES.get(Slot.DRAW_FRAMEBUFFER_IN_AREA_DEPTH_ALWAYS),
+                "TEXTURED"
+            );
+            assignIrisPipeline(
+                assignPipeline,
+                shaderKeyClass,
+                PIPELINES.get(Slot.DRAW_FRAMEBUFFER_IN_AREA_ALPHA_TEXTURE),
                 "TEXTURED"
             );
 
