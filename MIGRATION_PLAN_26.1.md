@@ -2974,3 +2974,79 @@ Conclusion :
     une autre strategie d'occlusion/clipping.
 
 Rapport : `PHASE10.6_ALPHA_TEXTURE_RUNTIME_VALIDATION.md`.
+
+### 10.7 Stabilisation experimentale du mode alpha_texture
+
+Objectif :
+
+- figer la decision technique autour de `alpha_texture` ;
+- clarifier la matrice shaderpack actuelle ;
+- ne pas modifier le renderer ;
+- ne pas changer le comportement par defaut.
+
+Etat verifie :
+
+- Phase 10.6 committee : `1ab3ae88 Document alpha texture mask runtime validation` ;
+- baseline Iris shaderpack fallback presente : `404c5000` ;
+- diagnostics ordre/profondeur presents : `2fddda41`, `e196758b` ;
+- prototype alpha texture present : `3f02f96f` ;
+- `run/config/iris.properties` restaure sur
+  `shaderPack=MakeUp-UltraFast-9.5c.zip` ;
+- aucun flag global `IMM_PTL_*` actif ;
+- aucun process Phase 10.x `runClient` restant.
+
+Matrice actuelle :
+
+- MakeUp-UltraFast-9.5c.zip :
+  - `default` / `depth-masked-equal` = baseline stable.
+- ComplementaryReimagined_r5.8.1.zip :
+  - `default` = intermittent ou trop sombre ;
+  - `lequal` = visible mais intermittent ;
+  - `no_depth` = fallback manuel robuste, occlusion degradee ;
+  - `no_depth + alpha_texture` = experimental opt-in, reduit certains
+    cadres/diagonales internes, mais n'est pas un vrai masque silhouette.
+
+Modes a conserver :
+
+- `IMM_PTL_FRAMEBUFFER_DEPTH_MODE` :
+  - `default` ;
+  - `no_depth` ;
+  - `lequal` ;
+  - `always`.
+- `IMM_PTL_FRAMEBUFFER_ORDER_MODE` :
+  - `default` ;
+  - `mask_first_explicit` ;
+  - `quad_first` ;
+  - `no_mask_reference`.
+- `IMM_PTL_PORTAL_CPU_CLIP_MODE` :
+  - `off` ;
+  - `portal_quad_only` ;
+  - `conservative_plane` ;
+  - `debug_bounds`.
+- `IMM_PTL_FRAMEBUFFER_MASK_MODE` :
+  - `off` ;
+  - `alpha_texture`.
+
+Modes a ne pas promouvoir automatiquement :
+
+- `quad_first` ;
+- `no_mask_reference` ;
+- `portal_quad_only` ;
+- `alpha_texture` ;
+- `lequal`.
+
+Decision :
+
+- `alpha_texture` reste un mode experimental opt-in ;
+- actif uniquement sur le chemin non-depth-masked ;
+- ne remplace ni `default`, ni `no_depth` ;
+- ne doit pas etre active automatiquement selon le shaderpack ;
+- le vrai masque texture silhouette + passe de composition dediee est reporte
+  a une phase future.
+
+Validation :
+
+- pas de compilation relancee, car Phase 10.7 est documentaire uniquement ;
+- aucune modification de code runtime.
+
+Rapport : `PHASE10.7_ALPHA_TEXTURE_EXPERIMENTAL_STABILIZATION.md`.
