@@ -3144,3 +3144,103 @@ Prochaines routes possibles :
   portage hors rendu shaderpack.
 
 Rapport : `PHASE10.8_SHADERPACK_BASELINE_FREEZE.md`.
+
+## Phase 11 - Decision post-gel shaderpack
+
+### 11.0 Audit de decision post-gel shaderpack
+
+Objectif :
+
+- choisir la prochaine route apres le gel Phase 10.x ;
+- comparer :
+  - Route A : vrai masque texture silhouette + composition dediee ;
+  - Route B : gel temporaire du rendu shaderpack et autre famille du portage ;
+- ne modifier aucun code runtime.
+
+Etat verifie :
+
+- commit de gel present :
+  `5c4b7dcf Freeze Phase 10 shaderpack rendering baseline` ;
+- `run/config/iris.properties` restaure sur
+  `shaderPack=MakeUp-UltraFast-9.5c.zip` ;
+- aucun flag global `IMM_PTL_*` actif ;
+- aucun process Phase 10.x / 11.x `runClient` actif ;
+- aucune compilation ou runtime relance, car audit documentaire uniquement.
+
+Rapports relus :
+
+- `PHASE10.8_SHADERPACK_BASELINE_FREEZE.md` ;
+- `PHASE10.7_ALPHA_TEXTURE_EXPERIMENTAL_STABILIZATION.md` ;
+- `PHASE10.6_ALPHA_TEXTURE_RUNTIME_VALIDATION.md` ;
+- `PHASE10.4_RENDER_GRAPH_STENCIL_LIKE_AUDIT.md` ;
+- `PHASE10.3_NO_DEPTH_CPU_GEOMETRIC_CLIP_PROTOTYPE.md` ;
+- `PHASE10.2_COMPLEMENTARY_ORDER_VISUAL_VALIDATION.md`.
+
+Route A - vrai masque texture silhouette + composition dediee :
+
+- techniquement plausible ;
+- fichiers probables :
+  - `RendererUsingFrameBuffer.java` ;
+  - `IPRenderPipelines.java` ;
+  - `SecondaryFrameBuffer.java` ;
+  - `MyRenderHelper.java` ;
+  - `PortalEntityRenderer.java` ;
+  - assets shader `core/*` si composition multi-sampler necessaire ;
+  - mapping reflectif Iris des pipelines ;
+- besoins :
+  - texture/render target masque separe ;
+  - passe d'ecriture silhouette ;
+  - passe de composition ;
+  - strategie ownership GPU ;
+  - fallback si target/pipeline indisponible ;
+  - tests vanilla/Sodium/Iris/MakeUp/Complementary ;
+- risques :
+  - complexite moyenne a elevee ;
+  - risque Iris shaderpack eleve ;
+  - risque fuite GPU/performance moyen ;
+  - risque de regression MakeUp default ;
+  - ne resout pas forcement le clipping du monde destination.
+
+Verdict Route A :
+
+- ne pas l'ouvrir immediatement ;
+- la reprendre plus tard comme phase de design/prototype dediee.
+
+Route B - autre famille hors rendu shaderpack :
+
+- candidates evaluees :
+  - documentation utilisateur des fallbacks shaderpack ;
+  - inventaire/nettoyage des flags dev ;
+  - traversée Nether / End ;
+  - sauvegarde/rechargement long terme ;
+  - compatibilite Sodium runtime plus large ;
+  - commandes utilisateur ;
+  - packaging alpha ;
+  - DimLib / AlternateDimensions avec plan separe seulement.
+
+Priorites recommandees :
+
+1. documentation utilisateur des modes shaderpack + matrice des flags ;
+2. inventaire/plan de nettoyage des flags dev ;
+3. regressions gameplay hors shaderpack :
+   - Nether/End ;
+   - save/reload long terme ;
+   - portal count / Duplicate UUID ;
+4. packaging alpha ou Sodium runtime elargi ;
+5. DimLib seulement apres plan dedie.
+
+Decision :
+
+- choisir Route B maintenant ;
+- Route A plus tard, apres preparation ;
+- ne pas modifier le renderer ni ajouter de masque texture en 11.0.
+
+Recommandation Phase 11.1 :
+
+- phase documentaire/inventaire :
+  - documenter les fallbacks shaderpack utilisateur ;
+  - stabiliser la matrice des flags dev ;
+  - separer clairement flags utilisateur, flags debug et modes experimentaux ;
+  - ne pas changer le comportement runtime.
+
+Rapport : `PHASE11.0_POST_SHADERPACK_FREEZE_DECISION_AUDIT.md`.
