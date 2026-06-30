@@ -3050,3 +3050,97 @@ Validation :
 - aucune modification de code runtime.
 
 Rapport : `PHASE10.7_ALPHA_TEXTURE_EXPERIMENTAL_STABILIZATION.md`.
+
+### 10.8 Gel baseline shaderpack Phase 10.x
+
+Objectif :
+
+- figer proprement la baseline shaderpack Phase 10.x ;
+- ne pas modifier le renderer ;
+- ne pas changer le comportement par defaut ;
+- ne pas promouvoir `no_depth` ou `alpha_texture` ;
+- documenter la matrice finale avant une phase plus risquee.
+
+Commit courant avant gel :
+
+- `19fed37f Document alpha texture experimental status`.
+
+Commits Phase 10.x importants presents :
+
+- `404c5000 Stabilize Iris shaderpack fallback rendering baseline` ;
+- `2fddda41 Add opt-in framebuffer order diagnostics` ;
+- `e196758b Add opt-in no-depth portal geometry clip diagnostics` ;
+- `3f02f96f Add opt-in alpha texture framebuffer mask prototype` ;
+- `1ab3ae88 Document alpha texture mask runtime validation` ;
+- `19fed37f Document alpha texture experimental status`.
+
+Matrice finale :
+
+- MakeUp-UltraFast-9.5c.zip :
+  - `default` / `depth-masked-equal` = baseline stable.
+- ComplementaryReimagined_r5.8.1.zip :
+  - `default` = intermittent ou trop sombre ;
+  - `lequal` = visible mais intermittent ;
+  - `no_depth` = fallback manuel robuste, occlusion degradee ;
+  - `no_depth + alpha_texture` = experimental opt-in, reduit certains
+    artefacts internes mais n'est pas un vrai masque silhouette.
+
+Modes conserves :
+
+- `IMM_PTL_FRAMEBUFFER_DEPTH_MODE=default|no_depth|lequal|always` ;
+- `IMM_PTL_FRAMEBUFFER_ORDER_MODE=default|mask_first_explicit|quad_first|no_mask_reference` ;
+- `IMM_PTL_PORTAL_CPU_CLIP_MODE=off|portal_quad_only|conservative_plane|debug_bounds` ;
+- `IMM_PTL_FRAMEBUFFER_MASK_MODE=off|alpha_texture`.
+
+Modes non promus :
+
+- `quad_first` ;
+- `no_mask_reference` ;
+- `portal_quad_only` ;
+- `alpha_texture` ;
+- `lequal`.
+
+Etat final :
+
+- `run/config/iris.properties` restaure sur
+  `shaderPack=MakeUp-UltraFast-9.5c.zip` ;
+- aucun flag global `IMM_PTL_*` actif ;
+- aucun process Phase 10.x `runClient` actif ;
+- aucun code runtime modifie pendant Phase 10.8.
+
+Fichiers inclus dans le gel :
+
+- `MIGRATION_PLAN_26.1.md` ;
+- `PHASE10.2_COMPLEMENTARY_ORDER_VISUAL_VALIDATION.md` ;
+- `PHASE10.8_SHADERPACK_BASELINE_FREEZE.md`.
+
+Fichiers exclus :
+
+- logs runtime/compile massifs ;
+- captures/screenshots ;
+- `run/` ;
+- `build/` ;
+- shaderpacks `.zip` ;
+- copies temporaires Markdown ;
+- anciens artefacts historiques.
+
+Risques restants :
+
+- clipping general incomplet ;
+- pas de stencil public via RenderPipeline 26.1 ;
+- `no_depth` robuste mais occlusion degradee ;
+- `alpha_texture` utile en diagnostic mais sans vraie texture silhouette ;
+- vrai masque texture separe + composition dediee reporte.
+
+Compilation :
+
+- non relancee, car Phase 10.8 est documentaire uniquement et aucun code
+  runtime n'a change.
+
+Prochaines routes possibles :
+
+- Phase 11.0 : vrai masque texture silhouette + passe de composition dediee ;
+- ou gel temporaire du rendu shaderpack et reprise d'une autre famille de
+  portage hors rendu shaderpack.
+
+Rapport : `PHASE10.8_SHADERPACK_BASELINE_FREEZE.md`.
