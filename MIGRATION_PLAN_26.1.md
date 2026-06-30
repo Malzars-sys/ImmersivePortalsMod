@@ -2891,3 +2891,86 @@ Recommandation Phase 10.6 :
   prototype texture masque separee + composition dediee.
 
 Rapport : `PHASE10.5_ALPHA_TEXTURE_MASK_PROTOTYPE.md`.
+
+### 10.6 Validation runtime manuelle du masque alpha_texture
+
+Objectif :
+
+- valider le mode opt-in `IMM_PTL_FRAMEBUFFER_MASK_MODE=alpha_texture`
+  sous Iris + shaderpack ;
+- comparer contre le fallback manuel `no_depth` ;
+- ne pas modifier le renderer, les pipelines, Iris, Sodium shader, DimLib ou le
+  defaut global.
+
+Correction de protocole :
+
+- l'ancien monde `Phase106MakeUpDefaultManual` n'est pas retenu comme
+  reference visuelle propre, car les mondes de test pouvaient contenir des
+  portails issus d'essais precedents ;
+- les tests B/C/D ont ete relances sur des mondes propres :
+  - `Phase106ComplementaryNoDepthReferenceClean` ;
+  - `Phase106ComplementaryNoDepthAlphaTextureClean` ;
+  - `Phase106InvalidMaskModeClean` ;
+- ces mondes ont ete copies depuis `Phase80IrisShaderpackWorldTest` ;
+- scan pre-lancement : `portal-string-hits=0` pour chaque monde propre.
+
+Validation B - Complementary `no_depth` reference :
+
+- shaderpack : `ComplementaryReimagined_r5.8.1.zip` ;
+- depth mode : `no_depth` ;
+- mask mode : `off` ;
+- portail client pertinent : `Portal{229,...}` ;
+- framebuffer texture : disponible `854x480` ;
+- pipeline : `non-depth-masked` ;
+- quad SubmitNodeCollector : soumis ;
+- capture : `phase10.6-complementary-no-depth-reference.png` ;
+- un seul portail visible dans le champ.
+
+Validation C - Complementary `no_depth + alpha_texture` :
+
+- shaderpack : `ComplementaryReimagined_r5.8.1.zip` ;
+- depth mode : `no_depth` ;
+- mask mode : `alpha_texture` ;
+- portail client pertinent : `Portal{221,...}` ;
+- alpha texture composition tentee : oui ;
+- pipeline disponible : oui ;
+- framebuffer texture : disponible `854x480` ;
+- pipeline : `non-depth-masked-alpha-texture` ;
+- quad SubmitNodeCollector : soumis ;
+- capture : `phase10.6-complementary-no-depth-alpha-texture.png` ;
+- un seul portail visible dans le champ.
+
+Observation visuelle :
+
+- `alpha_texture` reduit les diagonales/cadres internes cyan par rapport au
+  `no_depth` reference ;
+- le rendu reste tres lumineux sous Complementary ;
+- le prototype ne fournit pas encore un vrai masque silhouette separe ;
+- clipping general : toujours non resolu.
+
+Validation D - mode invalide :
+
+- flag : `IMM_PTL_FRAMEBUFFER_MASK_MODE=banana` ;
+- warning observe :
+  `Unknown IMM_PTL_FRAMEBUFFER_MASK_MODE 'banana'; falling back to off` ;
+- fallback : `off` ;
+- portail client pertinent : `Portal{234,...}` ;
+- crash : 0.
+
+Etat final :
+
+- `run/config/iris.properties` restaure sur `MakeUp-UltraFast-9.5c.zip` ;
+- aucun flag global `IMM_PTL_*` laisse actif ;
+- aucun process Phase 10.6 `runClient` restant ;
+- code renderer non modifie pendant Phase 10.6.
+
+Conclusion :
+
+- `alpha_texture` est runtime-safe et utile comme diagnostic visuel ;
+- ne pas le promouvoir automatiquement ;
+- prochaine etape possible :
+  - soit vrai masque texture silhouette + composition dediee ;
+  - soit garder `no_depth` comme fallback manuel shaderpack-safe et passer a
+    une autre strategie d'occlusion/clipping.
+
+Rapport : `PHASE10.6_ALPHA_TEXTURE_RUNTIME_VALIDATION.md`.
