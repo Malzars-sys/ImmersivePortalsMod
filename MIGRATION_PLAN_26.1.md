@@ -2733,3 +2733,90 @@ Recommandation Phase 10.4 :
   famille.
 
 Rapport : `PHASE10.3_NO_DEPTH_CPU_GEOMETRIC_CLIP_PROTOTYPE.md`.
+
+### 10.4 Audit render-graph / stencil-like sans glStencil
+
+Objectif :
+
+- determiner s'il existe une strategie de masque portail compatible Minecraft
+  26.1 sans `glStencil*` ;
+- ne pas reactiver l'ancien `RendererUsingStencil` ;
+- ne pas changer les modes framebuffer existants ;
+- ne pas promouvoir `no_depth` ou `portal_quad_only`.
+
+Etat initial verifie :
+
+- commits presents :
+  - `404c5000 Stabilize Iris shaderpack fallback rendering baseline` ;
+  - `2fddda41 Add opt-in framebuffer order diagnostics` ;
+  - `e196758b Add opt-in no-depth portal geometry clip diagnostics` ;
+- `run/config/iris.properties` restaure sur `MakeUp-UltraFast-9.5c.zip` ;
+- aucun flag global `IMM_PTL_*` actif.
+
+APIs inspectees :
+
+- `RenderPipeline` ;
+- `RenderPass` ;
+- `DepthStencilState` ;
+- `RenderTarget` ;
+- `CommandEncoder` ;
+- `TextureFormat` ;
+- `SubmitNodeCollector` ;
+- `IPRenderPipelines` ;
+- `RendererUsingFrameBuffer` ;
+- `RendererUsingStencil` ;
+- `MyRenderHelper` ;
+- `PortalEntityRenderer`.
+
+Resultat API publique 26.1 :
+
+- `DepthStencilState` expose seulement :
+  - depth test ;
+  - write depth ;
+  - depth bias ;
+- aucun stencil ref/mask/op public ;
+- `CommandEncoder` expose clear color/depth, mais pas clear stencil ;
+- `RenderPass` expose pipeline/textures/uniforms/scissor/draw, mais pas stencil
+  dynamique ;
+- `TextureFormat` expose `RGBA8`, `RED8`, `RED8I`, `DEPTH32`, pas de format
+  depth-stencil public.
+
+Conclusion :
+
+- vrai stencil public via `RenderPipeline` : non disponible ;
+- ancien `RendererUsingStencil` : dangereux et a garder isole ;
+- masque profondeur actuel : utile mais limite ;
+- `no_depth` : fallback manuel robuste sous Complementary, mais occlusion
+  degradee ;
+- `portal_quad_only` : utile comme diagnostic bounds, insuffisant pour les
+  artefacts internes de la texture ;
+- meilleure piste : masque texture couleur/alpha + passe de composition
+  render-graph opt-in.
+
+Pourquoi ne pas reactiver `RendererUsingStencil` :
+
+- depend de `glClearStencil`, `GL_STENCIL_BUFFER_BIT`, `glStencilFunc`,
+  `glStencilOp`, `glStencilMask` ;
+- manipule l'etat GPU global hors render graph ;
+- risque d'etat non restaure avec Iris/Sodium ;
+- stencil buffer principal non garanti ;
+- conflit probable avec shaderpacks et passes finales Iris.
+
+Recommandation Phase 10.5 :
+
+- micro-prototype opt-in de masque texture/composition ;
+- flag propose : `IMM_PTL_FRAMEBUFFER_MASK_MODE=off|alpha_texture` ;
+- defaut : `off` ;
+- cible initiale : Complementary `no_depth` ;
+- principe :
+  - rendre la silhouette du portail dans une texture masque ;
+  - composer framebuffer destination + masque ;
+  - fallback vers le chemin actuel si indisponible ;
+- ne pas utiliser `glStencil*` ;
+- ne pas changer le default global.
+
+Compilation :
+
+- non relancee, car aucun code runtime modifie.
+
+Rapport : `PHASE10.4_RENDER_GRAPH_STENCIL_LIKE_AUDIT.md`.
