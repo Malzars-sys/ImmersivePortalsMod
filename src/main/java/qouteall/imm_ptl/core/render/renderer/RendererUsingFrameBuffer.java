@@ -66,6 +66,11 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
     private static boolean loggedFramebufferPipelineMode;
     private static boolean loggedFramebufferOrderMode;
     private static boolean loggedActiveShaderpack;
+    private static boolean loggedPortalCpuClipMode;
+    private static boolean loggedPortalCpuClipIgnored;
+    private static boolean loggedPortalCpuClipBounds;
+    private static boolean loggedPortalCpuClipInvalid;
+    private static boolean loggedPortalCpuClipApplied;
     private static boolean pendingMinimalRecursivePortalScreenshot;
     private static long minimalRecursivePortalScreenshotRequestedAt;
     private static final boolean FORCE_FRAMEBUFFER_NO_DEPTH_MASK =
@@ -78,6 +83,10 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
         resolveFramebufferOrderMode();
     private static final FramebufferOrderMode FRAMEBUFFER_ORDER_MODE =
         FRAMEBUFFER_ORDER_MODE_SELECTION.mode();
+    private static final PortalCpuClipModeSelection PORTAL_CPU_CLIP_MODE_SELECTION =
+        resolvePortalCpuClipMode();
+    private static final PortalCpuClipMode PORTAL_CPU_CLIP_MODE =
+        PORTAL_CPU_CLIP_MODE_SELECTION.mode();
     private final List<Portal> queuedMinimalPortals = new ArrayList<>();
     private int lastQueuedFrame = -1;
     private Portal renderedMinimalPortal;
@@ -148,6 +157,29 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
 
     private record FramebufferOrderModeSelection(
         FramebufferOrderMode mode,
+        String source,
+        String invalidValue
+    ) {}
+
+    private enum PortalCpuClipMode {
+        OFF("off", false, false),
+        PORTAL_QUAD_ONLY("portal_quad_only", true, false),
+        CONSERVATIVE_PLANE("conservative_plane", true, true),
+        DEBUG_BOUNDS("debug_bounds", false, false);
+
+        private final String id;
+        private final boolean enforceBounds;
+        private final boolean rejectBackSideCamera;
+
+        PortalCpuClipMode(String id, boolean enforceBounds, boolean rejectBackSideCamera) {
+            this.id = id;
+            this.enforceBounds = enforceBounds;
+            this.rejectBackSideCamera = rejectBackSideCamera;
+        }
+    }
+
+    private record PortalCpuClipModeSelection(
+        PortalCpuClipMode mode,
         String source,
         String invalidValue
     ) {}
@@ -226,6 +258,51 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
         return new FramebufferOrderModeSelection(
             FramebufferOrderMode.DEFAULT,
             "invalid IMM_PTL_FRAMEBUFFER_ORDER_MODE fallback",
+            rawMode
+        );
+    }
+
+    private static PortalCpuClipModeSelection resolvePortalCpuClipMode() {
+        String rawMode = System.getenv("IMM_PTL_PORTAL_CPU_CLIP_MODE");
+        if (rawMode == null || rawMode.isBlank()) {
+            rawMode = System.getenv("IMM_PTL_NO_DEPTH_GEOMETRIC_CLIP");
+            if ("true".equalsIgnoreCase(rawMode)) {
+                return new PortalCpuClipModeSelection(
+                    PortalCpuClipMode.PORTAL_QUAD_ONLY,
+                    "IMM_PTL_NO_DEPTH_GEOMETRIC_CLIP",
+                    null
+                );
+            }
+        }
+
+        if (rawMode == null || rawMode.isBlank()) {
+            return new PortalCpuClipModeSelection(
+                PortalCpuClipMode.OFF,
+                "default implicit",
+                null
+            );
+        }
+
+        String normalized = rawMode.trim().toLowerCase(Locale.ROOT).replace('-', '_');
+        PortalCpuClipMode mode = switch (normalized) {
+            case "off", "false", "disabled", "none" -> PortalCpuClipMode.OFF;
+            case "portal_quad_only", "quad_only", "bounds" -> PortalCpuClipMode.PORTAL_QUAD_ONLY;
+            case "conservative_plane", "plane" -> PortalCpuClipMode.CONSERVATIVE_PLANE;
+            case "debug_bounds", "debug" -> PortalCpuClipMode.DEBUG_BOUNDS;
+            default -> null;
+        };
+
+        if (mode != null) {
+            return new PortalCpuClipModeSelection(
+                mode,
+                "IMM_PTL_PORTAL_CPU_CLIP_MODE",
+                null
+            );
+        }
+
+        return new PortalCpuClipModeSelection(
+            PortalCpuClipMode.OFF,
+            "invalid IMM_PTL_PORTAL_CPU_CLIP_MODE fallback",
             rawMode
         );
     }
@@ -584,6 +661,8 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
             );
         }
 
+        logPortalCpuClipMode();
+
         if (
             FRAMEBUFFER_DEPTH_MODE.usesDepthMask &&
             FRAMEBUFFER_ORDER_MODE.allowDepthMask &&
@@ -611,6 +690,10 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
                     "Minimal recursive portal SubmitNodeCollector fallback: framebuffer texture unavailable"
                 );
             }
+            return;
+        }
+
+        if (!validatePortalCpuClip(portal, useDepthMask)) {
             return;
         }
 
@@ -686,6 +769,113 @@ public class RendererUsingFrameBuffer extends PortalRenderer {
                 );
             }
         }
+    }
+
+    private void logPortalCpuClipMode() {
+        if (loggedPortalCpuClipMode) {
+            return;
+        }
+        loggedPortalCpuClipMode = true;
+        if (PORTAL_CPU_CLIP_MODE_SELECTION.invalidValue() != null) {
+            LOGGER.warn(
+                "Unknown IMM_PTL_PORTAL_CPU_CLIP_MODE '{}'; falling back to off",
+                PORTAL_CPU_CLIP_MODE_SELECTION.invalidValue()
+            );
+        }
+        LOGGER.info(
+            "Minimal recursive portal CPU/geometric clip mode: {} (source: {})",
+            PORTAL_CPU_CLIP_MODE.id,
+            PORTAL_CPU_CLIP_MODE_SELECTION.source()
+        );
+    }
+
+    private boolean validatePortalCpuClip(Portal portal, boolean useDepthMask) {
+        if (PORTAL_CPU_CLIP_MODE == PortalCpuClipMode.OFF) {
+            return true;
+        }
+
+        if (useDepthMask) {
+            if (!loggedPortalCpuClipIgnored) {
+                loggedPortalCpuClipIgnored = true;
+                LOGGER.info(
+                    "Minimal portal CPU/geometric clip ignored: active only for non-depth-masked framebuffer modes"
+                );
+            }
+            return true;
+        }
+
+        double width = portal.getWidth();
+        double height = portal.getHeight();
+        Vec3 axisW = portal.getAxisW();
+        Vec3 axisH = portal.getAxisH();
+        Vec3 normal = portal.getNormal();
+        Vec3 cameraPos = RenderStates.originalCamera != null
+            ? RenderStates.originalCamera.position()
+            : client.gameRenderer.getMainCamera().position();
+        double cameraPlaneDistance = cameraPos.subtract(portal.getOriginPos()).dot(normal);
+        boolean boundsValid =
+            Double.isFinite(width) &&
+                Double.isFinite(height) &&
+                width > 0.001 &&
+                height > 0.001 &&
+                width < 1024 &&
+                height < 1024 &&
+                axisW != null &&
+                axisH != null &&
+                isFiniteVec(axisW) &&
+                isFiniteVec(axisH) &&
+                axisW.lengthSqr() > 0.5 &&
+                axisH.lengthSqr() > 0.5;
+
+        if (!loggedPortalCpuClipBounds) {
+            loggedPortalCpuClipBounds = true;
+            LOGGER.info(
+                "Minimal portal CPU/geometric clip bounds: valid={}, width={}, height={}, " +
+                    "cameraPlaneDistance={}, mode={}",
+                boundsValid,
+                width,
+                height,
+                cameraPlaneDistance,
+                PORTAL_CPU_CLIP_MODE.id
+            );
+        }
+
+        if (!boundsValid && PORTAL_CPU_CLIP_MODE.enforceBounds) {
+            if (!loggedPortalCpuClipInvalid) {
+                loggedPortalCpuClipInvalid = true;
+                LOGGER.info(
+                    "Minimal portal CPU/geometric clip fallback: invalid portal quad bounds; using cyan frame only"
+                );
+            }
+            return false;
+        }
+
+        if (
+            PORTAL_CPU_CLIP_MODE.rejectBackSideCamera &&
+                cameraPlaneDistance < -0.05
+        ) {
+            if (!loggedPortalCpuClipInvalid) {
+                loggedPortalCpuClipInvalid = true;
+                LOGGER.info(
+                    "Minimal portal CPU/geometric clip fallback: conservative plane rejected backside camera"
+                );
+            }
+            return false;
+        }
+
+        if (PORTAL_CPU_CLIP_MODE.enforceBounds && !loggedPortalCpuClipApplied) {
+            loggedPortalCpuClipApplied = true;
+            LOGGER.info(
+                "Minimal portal CPU/geometric clip applied: strict portal quad geometry only"
+            );
+        }
+        return true;
+    }
+
+    private static boolean isFiniteVec(Vec3 vec) {
+        return Double.isFinite(vec.x) &&
+            Double.isFinite(vec.y) &&
+            Double.isFinite(vec.z);
     }
 
     private OrderedSubmitNodeCollector getFramebufferQuadCollector(

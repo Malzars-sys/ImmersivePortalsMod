@@ -2544,3 +2544,192 @@ Recommandation Phase 10.2 :
   ne resoud probablement pas les passes deferred/post-process du shaderpack.
 
 Rapport : `PHASE10.1_FRAMEBUFFER_ORDER_DEPTH_MICRO_AUDIT.md`.
+
+### 10.2 Validation visuelle Complementary des variantes ordre/profondeur
+
+Objectif :
+
+Comparer visuellement les variantes `IMM_PTL_FRAMEBUFFER_ORDER_MODE` sous
+Complementary, sans modifier le renderer.
+
+Contraintes :
+
+- aucun changement de code ;
+- defaut global inchange ;
+- `no_depth` non promu ;
+- `quad_first` non promu ;
+- `no_mask_reference` non promu ;
+- aucun stencil/shader clipping reactive ;
+- aucun mixin shader Sodium active ;
+- aucun renderer Iris legacy restaure.
+
+Methode :
+
+- shaderpack : `ComplementaryReimagined_r5.8.1.zip` ;
+- portail auto-visible ;
+- captures F2 tentees mais non retenues, car elles capturent `Loading terrain`
+  ou ne sont pas produites de facon fiable ;
+- captures de fenetre Windows rejetees, car mauvaise fenetre capturee ;
+- validation finale via capture native du render target avec
+  `IMM_PTL_CAPTURE_MINIMAL_RECURSIVE_PORTAL=true`.
+
+Tests :
+
+- `default/default` :
+  - pipeline : `depth-masked-equal` ;
+  - cadre visible ;
+  - contenu framebuffer sombre/intermittent ;
+  - occlusion partielle/non fiable.
+- `default/mask_first_explicit` :
+  - meme ordre logique que le defaut ;
+  - pas d'amelioration visible ;
+  - contenu framebuffer sombre/absent selon la frame.
+- `default/quad_first` :
+  - quad soumis avant depth mask ;
+  - techniquement valide ;
+  - visuel intermittent, pas d'amelioration stable.
+- `default/no_mask_reference` :
+  - pipeline : `non-depth-masked` ;
+  - contenu framebuffer clairement visible ;
+  - occlusion degradee.
+- `no_depth/default` :
+  - pipeline : `non-depth-masked` ;
+  - contenu framebuffer clairement visible ;
+  - fallback manuel le plus robuste sous Complementary ;
+  - occlusion degradee.
+
+Erreurs runtime :
+
+- `Missing program` : 0 ;
+- `Buffer already closed` : 0 ;
+- `ConcurrentModificationException` : 0 ;
+- `Duplicate entity UUID` : 0 ;
+- `UnsupportedOperationException` : 0 ;
+- crash : 0.
+
+Etat final :
+
+- `run/config/iris.properties` restaure sur `MakeUp-UltraFast-9.5c.zip` ;
+- aucun flag global laisse actif ;
+- aucune compilation relancee, car aucun code modifie.
+
+Conclusion :
+
+L'ordre `SubmitNodeCollector` seul ne stabilise pas Complementary. Le probleme
+vient bien de l'interaction depth mask strict / shaderpack deferred-postprocess.
+`no_mask_reference` et `no_depth` rendent le contenu clairement visible, mais
+degradent l'occlusion.
+
+Recommandation Phase 10.3 :
+
+- ne pas promouvoir `quad_first` ;
+- ne pas changer le defaut global ;
+- garder `no_depth` comme fallback manuel shaderpack-safe ;
+- explorer une micro-phase de clipping CPU limite ou masque geometrique sans
+  depth strict pour reduire les artefacts du mode sans masque.
+
+Rapport : `PHASE10.2_COMPLEMENTARY_ORDER_VISUAL_VALIDATION.md`.
+
+### 10.3 Micro-prototype clipping CPU/geometrique pour fallback no_depth
+
+Objectif :
+
+Tester un prototype opt-in pour reduire les artefacts du fallback `no_depth`
+sous Complementary, sans stencil, sans shader clipping et sans modifier le
+defaut global.
+
+Modification :
+
+- ajout du flag dev `IMM_PTL_PORTAL_CPU_CLIP_MODE` ;
+- modes disponibles :
+  - `off` : defaut ;
+  - `portal_quad_only` : valide les bounds CPU du quad portail et refuse les
+    quads invalides ;
+  - `conservative_plane` : rejet experimental cote plan, non teste dans cette
+    phase ;
+  - `debug_bounds` : diagnostics de bounds ;
+- alias `IMM_PTL_NO_DEPTH_GEOMETRIC_CLIP=true` vers `portal_quad_only`.
+
+Portee :
+
+- le prototype ne s'applique qu'au chemin framebuffer non-depth-masked ;
+- `default`, `lequal` et `always` ne changent pas ;
+- aucun pipeline Iris modifie ;
+- aucun mapping Iris modifie ;
+- aucun Sodium/DimLib touche.
+
+Validation compilation :
+
+- vanilla : BUILD SUCCESSFUL ;
+- Sodium compile-only : BUILD SUCCESSFUL ;
+- Iris compile-only : BUILD SUCCESSFUL.
+
+Tests runtime :
+
+- MakeUp default baseline :
+  - CPU/geometric clip : `off` ;
+  - pipeline : `depth-masked-equal` ;
+  - framebuffer : `854x480` ;
+  - quad soumis ;
+  - screenshot native obtenue ;
+  - BUILD SUCCESSFUL.
+- Complementary `no_depth` reference :
+  - CPU/geometric clip : `off` ;
+  - pipeline : `non-depth-masked` ;
+  - quad soumis ;
+  - screenshot native obtenue ;
+  - BUILD SUCCESSFUL.
+- Complementary `no_depth + portal_quad_only` :
+  - CPU/geometric clip : `portal_quad_only` ;
+  - bounds valides ;
+  - width : `2.0` ;
+  - height : `3.0` ;
+  - clipping applique : strict portal quad geometry only ;
+  - pipeline : `non-depth-masked` ;
+  - quad soumis ;
+  - screenshot native obtenue ;
+  - BUILD SUCCESSFUL.
+- Complementary `no_mask_reference + portal_quad_only` :
+  - cas optionnel ;
+  - deux relances automatiques ont ete tentees apres correction anti-spam ;
+  - le client ne s'est pas ferme automatiquement dans la fenetre de validation ;
+  - le log final est tronque au lancement Gradle ;
+  - non retenu comme preuve finale Phase 10.3.
+
+Erreurs runtime :
+
+- `Missing program` : 0 ;
+- `Buffer already closed` : 0 ;
+- `ConcurrentModificationException` : 0 ;
+- `Duplicate entity UUID` : 0 ;
+- `UnsupportedOperationException` : 0 ;
+- crash : 0.
+
+Note : ces compteurs s'appliquent aux logs complets Phase 10.3. Le run
+`no_mask_reference + portal_quad_only` est conserve comme tentative optionnelle,
+mais son log tronque n'est pas utilise comme preuve finale.
+
+Conclusion :
+
+Le prototype est stable comme garde de bounds, mais il ne reduit pas les
+artefacts visuels du fallback `no_depth`. Le quad etait deja strictement limite
+a la geometrie du portail ; les artefacts viennent donc du contenu deja rendu
+dans la texture destination.
+
+Etat final :
+
+- `run/config/iris.properties` restaure sur `MakeUp-UltraFast-9.5c.zip` ;
+- aucun flag global laisse actif ;
+- defaut global inchange ;
+- `no_depth` reste manuel ;
+- prototype non promu.
+
+Recommandation Phase 10.4 :
+
+- ne pas promouvoir `portal_quad_only` ;
+- le garder comme outil diagnostic/securite bounds ;
+- soit auditer un masque render-graph/stencil-like sans `glStencil*` ;
+- soit geler cette baseline shaderpack fallback avant d'ouvrir une autre
+  famille.
+
+Rapport : `PHASE10.3_NO_DEPTH_CPU_GEOMETRIC_CLIP_PROTOTYPE.md`.
