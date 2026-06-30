@@ -3333,3 +3333,82 @@ Validation :
   modifie.
 
 Rapport : `PHASE11.1_SHADERPACK_DOCS_AND_FLAGS_INVENTORY.md`.
+
+### 11.2 Regression gameplay Nether / End
+
+Objectif :
+
+- tester des portails en dimensions vanilla reelles :
+  - Overworld -> Nether ;
+  - Nether -> Overworld ;
+  - Overworld -> End ;
+  - End -> Overworld ;
+- ne pas rouvrir le chantier rendu shaderpack ;
+- ne pas reactiver Sodium shader, Iris legacy, DimLib ou AlternateDimensions.
+
+Preparation :
+
+- audit des commandes existantes :
+  - `/portal make_portal` est utilisable mais trop fragile pour un test automatique,
+    car il depend d'un raycast joueur et d'un bloc vise ;
+  - ajout d'une commande dev isolee :
+    `/imm_ptl_debug create_dimension_test_portal <dimension>` ;
+  - ajout d'un flag dev opt-in :
+    `IMM_PTL_AUTO_MINIMAL_TRAVERSAL_DELAY_TICKS`.
+
+Validation :
+
+- `compileJava processResources` : BUILD SUCCESSFUL ;
+- `run/config/iris.properties` conserve
+  `shaderPack=MakeUp-UltraFast-9.5c.zip` ;
+- aucun flag global `IMM_PTL_*` actif apres les tests ;
+- aucun process `runClient` Phase 11.2 actif apres les tests.
+
+Resultats :
+
+- Overworld -> Nether :
+  - portail cree cote serveur : oui ;
+  - monde client destination cree : oui ;
+  - portail trouve cote client avec delai long : oui ;
+  - traversee finale confirmee : non.
+- Nether -> Overworld :
+  - portail cree : oui ;
+  - portail trouve cote client : oui ;
+  - traversee finale confirmee : non.
+- Overworld -> End :
+  - portail cree : oui ;
+  - portail trouve cote client : oui ;
+  - traversee finale confirmee : non.
+- End -> Overworld :
+  - portail cree : oui ;
+  - portail trouve cote client : oui ;
+  - traversee finale confirmee : non.
+
+Stabilite :
+
+- crash : 0 ;
+- `Duplicate entity UUID` : 0 ;
+- `ConcurrentModificationException` : 0 ;
+- `Buffer already closed` : 0 ;
+- `Missing program` : 0 ;
+- `UnsupportedOperationException` : 0.
+
+Conclusion :
+
+- creation et synchronisation client des portails interdimensionnels :
+  partiellement OK ;
+- traversee interdimensionnelle effective :
+  bloquee apres le positionnement initial du test client ;
+- save/reload d'une traversee interdimensionnelle terminee :
+  non valide.
+
+Recommandation Phase 11.3 :
+
+- phase bug ciblee gameplay :
+  - `ClientTeleportationManager` ;
+  - detection de franchissement interdimensionnel ;
+  - collision/crossing cote serveur ;
+  - diagnostic de vitesse/position du test client ;
+  - sans toucher au renderer, shaderpack, Sodium, Iris, DimLib ou AlternateDimensions.
+
+Rapport : `PHASE11.2_NETHER_END_TRAVERSAL_REGRESSION.md`.

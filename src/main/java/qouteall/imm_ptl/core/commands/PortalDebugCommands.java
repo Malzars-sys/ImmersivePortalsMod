@@ -102,10 +102,27 @@ public class PortalDebugCommands {
                     true
                 ))
             )
+            .then(Commands.literal("create_dimension_test_portal")
+                .then(Commands.argument("dimension", DimensionArgument.dimension())
+                    .executes(context -> createMinimalTestPortal(
+                        context.getSource().getPlayerOrException(),
+                        false,
+                        DimensionArgument.getDimension(context, "dimension").dimension()
+                    ))
+                )
+            )
         );
     }
 
     private static int createMinimalTestPortal(ServerPlayer player, boolean placePlayerFacingPortal) {
+        return createMinimalTestPortal(player, placePlayerFacingPortal, player.level().dimension());
+    }
+
+    private static int createMinimalTestPortal(
+        ServerPlayer player,
+        boolean placePlayerFacingPortal,
+        ResourceKey<Level> destinationDimension
+    ) {
         ServerLevel world = player.level();
         Direction facing = player.getDirection();
         Vec3 normal = Vec3.atLowerCornerOf(facing.getUnitVec3i());
@@ -121,7 +138,7 @@ public class PortalDebugCommands {
         }
 
         portal.setOriginPos(origin);
-        portal.setDestinationDimension(world.dimension());
+        portal.setDestinationDimension(destinationDimension);
         portal.setDestination(destination);
         portal.setOrientationAndSize(axisW, axisH, 2, 3);
         portal.portalTag = "imm_ptl:minimal_test_portal";
@@ -139,9 +156,14 @@ public class PortalDebugCommands {
             );
         }
 
-        LOGGER.info("Created minimal test portal at {} targeting {}", origin, destination);
+        LOGGER.info(
+            "Created minimal test portal at {} targeting {} in {}",
+            origin, destination, destinationDimension.identifier()
+        );
         player.sendSystemMessage(Component.literal(
-            "Created minimal test portal at %s targeting %s".formatted(origin, destination)
+            "Created minimal test portal at %s targeting %s in %s".formatted(
+                origin, destination, destinationDimension.identifier()
+            )
         ));
         return 1;
     }

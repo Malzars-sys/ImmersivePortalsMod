@@ -92,6 +92,24 @@ These flags are intentionally not config options. They are runtime/test switches
   - kept for regression tests;
   - not for normal users.
 
+### IMM_PTL_AUTO_MINIMAL_TRAVERSAL_DELAY_TICKS
+
+- Values:
+  - positive integer tick delay
+- Default: disabled
+- Category: debug/dev
+- Introduced: Phase 11.2
+- Effect:
+  - overrides the delay used by `IMM_PTL_AUTO_MINIMAL_TRAVERSAL_TEST` before sending `imm_ptl_client_debug test_minimal_portal_traversal`.
+- Recommended use:
+  - interdimensional regression worlds where the destination client world must be created before the traversal command runs.
+- Risks:
+  - can hide timing regressions if used as a normal setting;
+  - should be recorded explicitly in test logs.
+- Status:
+  - kept for regression automation;
+  - not for normal users.
+
 ### IMM_PTL_CAPTURE_MINIMAL_RECURSIVE_PORTAL
 
 - Values:
