@@ -3631,3 +3631,85 @@ Recommandation Phase 11.6 :
   - garder le chantier hors rendu.
 
 Rapport : `PHASE11.5_NETHER_END_TEST_HARNESS.md`.
+
+### 11.6 Bug cible Overworld -> End
+
+Objectif :
+
+- comprendre pourquoi Overworld -> End creait le monde client End et
+  selectionnait le portail, mais ne produisait pas `Client Teleported Statically` ;
+- ne pas toucher au renderer, pipelines, shaders, Sodium, Iris, DimLib,
+  AlternateDimensions ou fallbacks shaderpack.
+
+Diagnostic :
+
+- le portail Overworld -> End etait bien selectionne cote client ;
+- le monde client `minecraft:the_end` etait bien cree ;
+- le mouvement attendu etait `localZ 0.25 -> -0.45` ;
+- le mouvement observe avant correctif restait `localZ 0.25 -> 0.25` ;
+- candidats de teleportation : 0 ;
+- le joueur tombait verticalement et finissait par se noyer ;
+- le temoin Overworld -> Nether montrait bien `localZ 0.25 -> -0.20`,
+  candidats : 1, puis `Client Teleported Statically`.
+
+Cause prouvee :
+
+- probleme de harnais, pas de teleportation End ni de rendu ;
+- la plateforme de test etait creee pres de `(0, 80, 0)` sans chargement
+  explicite du chunk ;
+- les corrections serveur faisaient tomber le joueur avant que le mouvement
+  client ne traverse le plan du portail.
+
+Correctif harnais :
+
+- position de test deplacee en hauteur :
+  - joueur : `(0.5, 120.0, 0.5)` ;
+  - portail : environ `y=121.5` ;
+- preparation d'une plateforme source et destination ;
+- chargement explicite du chunk `(0, 0)` avant ecriture des blocs ;
+- plateforme elargie et epaisse de deux blocs ;
+- poche d'air agrandie.
+
+Validation :
+
+- `compileJava processResources` : BUILD SUCCESSFUL ;
+- Overworld -> Overworld controle :
+  - `Client Teleported Statically` : oui ;
+- Overworld -> End :
+  - portail source : `minecraft:overworld` ;
+  - destination : `minecraft:the_end` ;
+  - `Client World Created minecraft:the_end` : oui ;
+  - `localZ 0.2500 -> -0.4500` : oui ;
+  - candidats : 1 ;
+  - `Client Changed Dimension from minecraft:overworld to minecraft:the_end` : oui ;
+  - `Client Teleported Statically` : oui ;
+  - `portal_worldChanged triggerDimensionChangeTriggers minecraft:overworld -> minecraft:the_end` : oui ;
+- End -> Overworld :
+  - portail source : `minecraft:the_end` ;
+  - destination : `minecraft:overworld` ;
+  - `localZ 0.2500 -> -0.4500` : oui ;
+  - candidats : 1 ;
+  - `Client Changed Dimension from minecraft:the_end to minecraft:overworld` : oui ;
+  - `Client Teleported Statically` : oui ;
+  - `portal_worldChanged triggerDimensionChangeTriggers minecraft:the_end -> minecraft:overworld` : oui.
+
+Stabilite :
+
+- `No nearby portal` : 0 ;
+- noyade apres correctif : 0 ;
+- `Duplicate entity UUID` : 0 ;
+- `ConcurrentModificationException` : 0 ;
+- `Buffer already closed` : 0 ;
+- `Missing program` : 0 ;
+- crash : 0 ;
+- renderer, shaderpack, Sodium, Iris, DimLib : non touches.
+
+Recommandation Phase 11.7 :
+
+- regression sauvegarde/rechargement sur les dimensions reelles validees :
+  - Overworld -> Nether ;
+  - Nether -> Overworld ;
+  - Overworld -> End ;
+  - End -> Overworld.
+
+Rapport : `PHASE11.6_OVERWORLD_TO_END_TRAVERSAL_BUG.md`.

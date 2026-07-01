@@ -81,6 +81,10 @@ import static qouteall.imm_ptl.core.commands.PortalCommand.hasPermissionLevel;
 
 public class PortalDebugCommands {
     private static final Logger LOGGER = LogUtils.getLogger();
+    private static final Vec3 DIMENSION_TEST_PLAYER_POS = new Vec3(0.5, 120.0, 0.5);
+    private static final int DIMENSION_TEST_FLOOR_Y = 119;
+    private static final int DIMENSION_TEST_AIR_MIN_Y = 120;
+    private static final int DIMENSION_TEST_AIR_MAX_Y = 126;
 
     static void registerDevelopmentCommands(
         CommandDispatcher<CommandSourceStack> dispatcher
@@ -188,9 +192,10 @@ public class PortalDebugCommands {
     ) {
         ResourceKey<Level> sourceDimension = sourceWorld.dimension();
         ResourceKey<Level> destinationDimension = destinationWorld.dimension();
-        Vec3 sourcePos = new Vec3(0.5, 80.0, 0.5);
+        Vec3 sourcePos = DIMENSION_TEST_PLAYER_POS;
 
         prepareDimensionTestPlatform(sourceWorld);
+        prepareDimensionTestPlatform(destinationWorld);
         LOGGER.info(
             "Preparing dimension test from {} to {}; player currently in {} at {}",
             sourceDimension.identifier(),
@@ -243,15 +248,17 @@ public class PortalDebugCommands {
     }
 
     private static void prepareDimensionTestPlatform(ServerLevel world) {
-        BlockPos origin = BlockPos.containing(0, 79, 0);
-        for (int x = -4; x <= 4; x++) {
-            for (int z = -4; z <= 18; z++) {
+        world.getChunk(0, 0);
+        BlockPos origin = BlockPos.containing(0, DIMENSION_TEST_FLOOR_Y, 0);
+        for (int x = -6; x <= 6; x++) {
+            for (int z = -6; z <= 20; z++) {
                 world.setBlockAndUpdate(origin.offset(x, 0, z), Blocks.STONE.defaultBlockState());
+                world.setBlockAndUpdate(origin.offset(x, -1, z), Blocks.STONE.defaultBlockState());
             }
         }
-        for (int x = -4; x <= 4; x++) {
-            for (int y = 80; y <= 86; y++) {
-                for (int z = -4; z <= 18; z++) {
+        for (int x = -6; x <= 6; x++) {
+            for (int y = DIMENSION_TEST_AIR_MIN_Y; y <= DIMENSION_TEST_AIR_MAX_Y; y++) {
+                for (int z = -6; z <= 20; z++) {
                     world.setBlockAndUpdate(new BlockPos(x, y, z), Blocks.AIR.defaultBlockState());
                 }
             }
