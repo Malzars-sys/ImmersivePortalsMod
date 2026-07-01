@@ -73,6 +73,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static qouteall.imm_ptl.core.chunk_loading.ImmPtlChunkTickets.getDistanceManager;
@@ -109,6 +110,17 @@ public class PortalDebugCommands {
                         false,
                         DimensionArgument.getDimension(context, "dimension").dimension()
                     ))
+                )
+            )
+            .then(Commands.literal("prepare_dimension_test")
+                .then(Commands.argument("source_dimension", DimensionArgument.dimension())
+                    .then(Commands.argument("destination_dimension", DimensionArgument.dimension())
+                        .executes(context -> prepareDimensionTest(
+                            context.getSource().getPlayerOrException(),
+                            DimensionArgument.getDimension(context, "source_dimension"),
+                            DimensionArgument.getDimension(context, "destination_dimension")
+                        ))
+                    )
                 )
             )
         );
@@ -158,15 +170,92 @@ public class PortalDebugCommands {
         }
 
         LOGGER.info(
-            "Created minimal test portal at {} targeting {} in {}",
-            origin, destination, destinationDimension.identifier()
+            "Created minimal test portal at {} in {} targeting {} in {}",
+            origin, world.dimension().identifier(), destination, destinationDimension.identifier()
         );
         player.sendSystemMessage(Component.literal(
-            "Created minimal test portal at %s targeting %s in %s".formatted(
-                origin, destination, destinationDimension.identifier()
+            "Created minimal test portal at %s in %s targeting %s in %s".formatted(
+                origin, world.dimension().identifier(), destination, destinationDimension.identifier()
             )
         ));
         return 1;
+    }
+
+    private static int prepareDimensionTest(
+        ServerPlayer player,
+        ServerLevel sourceWorld,
+        ServerLevel destinationWorld
+    ) {
+        ResourceKey<Level> sourceDimension = sourceWorld.dimension();
+        ResourceKey<Level> destinationDimension = destinationWorld.dimension();
+        Vec3 sourcePos = new Vec3(0.5, 80.0, 0.5);
+
+        prepareDimensionTestPlatform(sourceWorld);
+        LOGGER.info(
+            "Preparing dimension test from {} to {}; player currently in {} at {}",
+            sourceDimension.identifier(),
+            destinationDimension.identifier(),
+            player.level().dimension().identifier(),
+            player.position()
+        );
+
+        player.teleportTo(
+            sourceWorld,
+            sourcePos.x, sourcePos.y, sourcePos.z,
+            Set.of(),
+            0.0F, 0.0F,
+            true
+        );
+
+        ServerTaskList.of(player.level().getServer()).addTask(MyTaskList.withDelay(
+            40,
+            MyTaskList.oneShotTask(() -> {
+                LOGGER.info(
+                    "Creating prepared dimension test portal; player now in {} at {}; destination {}",
+                    player.level().dimension().identifier(),
+                    player.position(),
+                    destinationDimension.identifier()
+                );
+                if (player.level().dimension() != sourceDimension) {
+                    player.sendSystemMessage(Component.literal(
+                        "Dimension test source mismatch. Expected %s but player is in %s".formatted(
+                            sourceDimension.identifier(),
+                            player.level().dimension().identifier()
+                        )
+                    ));
+                    LOGGER.warn(
+                        "Dimension test source mismatch. Expected {} but player is in {}",
+                        sourceDimension.identifier(),
+                        player.level().dimension().identifier()
+                    );
+                    return;
+                }
+                createMinimalTestPortal(player, false, destinationDimension);
+            })
+        ));
+
+        player.sendSystemMessage(Component.literal(
+            "Preparing dimension test from %s to %s".formatted(
+                sourceDimension.identifier(), destinationDimension.identifier()
+            )
+        ));
+        return 1;
+    }
+
+    private static void prepareDimensionTestPlatform(ServerLevel world) {
+        BlockPos origin = BlockPos.containing(0, 79, 0);
+        for (int x = -4; x <= 4; x++) {
+            for (int z = -4; z <= 18; z++) {
+                world.setBlockAndUpdate(origin.offset(x, 0, z), Blocks.STONE.defaultBlockState());
+            }
+        }
+        for (int x = -4; x <= 4; x++) {
+            for (int y = 80; y <= 86; y++) {
+                for (int z = -4; z <= 18; z++) {
+                    world.setBlockAndUpdate(new BlockPos(x, y, z), Blocks.AIR.defaultBlockState());
+                }
+            }
+        }
     }
     
     static void registerDebugCommands(

@@ -3476,3 +3476,158 @@ Recommandation Phase 11.4 :
   - repousser End jusqu'a confirmation serveur complete.
 
 Rapport : `PHASE11.3_INTERDIMENSIONAL_TRAVERSAL_BUG_AUDIT.md`.
+
+### 11.4 ServerPlayer / triggers dimension apres traversee interdimensionnelle
+
+Objectif :
+
+- restaurer le hook minimal `ServerPlayer` necessaire apres une traversee
+  interdimensionnelle ;
+- verifier `portal_worldChanged`, `enteredNetherPosition` et les triggers de
+  changement de dimension ;
+- ne pas toucher au renderer, pipelines, shaders, Sodium, Iris, DimLib ou
+  AlternateDimensions.
+
+Cause identifiee :
+
+- `common.entity_sync.MixinServerPlayer` etait present dans
+  `src/main/resources/imm_ptl.mixins.json` ;
+- il etait absent de `build/resources/main/imm_ptl.mixins.json` ;
+- le filtrage vanilla de `build.gradle` supprimait tous les mixins
+  `common.entity_sync.*`, y compris la facade minimale `MixinServerPlayer`.
+
+Correctif :
+
+- exception ciblee dans `build.gradle` pour conserver uniquement
+  `common.entity_sync.MixinServerPlayer` ;
+- les autres mixins `common.entity_sync.*` restent exclus du profil vanilla ;
+- instrumentation limitee dans `MixinServerPlayer` pour confirmer :
+  - `portal_worldChanged stored enteredNetherPosition` ;
+  - `portal_worldChanged triggerDimensionChangeTriggers <from> -> <to>`.
+
+Validation :
+
+- `compileJava processResources` : BUILD SUCCESSFUL ;
+- JSON genere :
+  - `common.entity_sync.MixinServerPlayer` present ;
+  - aucun autre mixin `common.entity_sync.*` reactive.
+
+Tests runtime :
+
+- Overworld -> Overworld controle :
+  - portail dev cree : oui ;
+  - `Client Teleported Statically` : oui.
+- Overworld -> Nether :
+  - `Client World Created minecraft:the_nether` : oui ;
+  - `Client Changed Dimension from minecraft:overworld to minecraft:the_nether` : oui ;
+  - `Client Teleported Statically` : oui ;
+  - `portal_worldChanged stored enteredNetherPosition` : oui ;
+  - `portal_worldChanged triggerDimensionChangeTriggers minecraft:overworld -> minecraft:the_nether` : oui ;
+  - ancien fallback `IEServerPlayerEntity is unavailable` : non observe.
+- Nether -> Overworld :
+  - test non concluant ;
+  - le harnais datapack/auto-command cree encore le portail en Overworld ;
+  - aucun crash ni regression observee.
+
+Stabilite :
+
+- crash : 0 ;
+- `Duplicate entity UUID` : 0 ;
+- `ConcurrentModificationException` : 0 ;
+- `Buffer already closed` : 0 ;
+- renderer, shaderpack, Sodium, Iris, DimLib : non touches.
+
+Recommandation Phase 11.5 :
+
+- creer un harnais plus fiable pour demarrer un test depuis le Nether ou l'End ;
+- revalider Nether -> Overworld puis End sans rouvrir le chantier rendu.
+
+Rapport : `PHASE11.4_SERVER_PLAYER_DIMENSION_TRIGGERS.md`.
+
+### 11.5 Harnais fiable Nether / End pour tests interdimensionnels
+
+Objectif :
+
+- creer un harnais de test capable de garantir la dimension source reelle du
+  portail ;
+- revalider Nether -> Overworld sans faux `No nearby portal` ;
+- tester End seulement apres validation Nether.
+
+Cause du faux negatif Phase 11.4 :
+
+- le datapack de positionnement et la commande client auto n'offraient pas de
+  garantie forte sur la dimension du joueur au moment de
+  `create_dimension_test_portal` ;
+- le test Nether -> Overworld creait encore le portail en Overworld.
+
+Correctif harnais :
+
+- nouvelle commande dev :
+  - `/imm_ptl_debug prepare_dimension_test <source_dimension> <destination_dimension>` ;
+- nouveau flag client dev :
+  - `IMM_PTL_AUTO_DIMENSION_TEST_SOURCE=<dimension>` ;
+- si ce flag est present avec `IMM_PTL_AUTO_DIMENSION_TEST_PORTAL`, le client
+  envoie la commande preparee source/destination ;
+- sinon l'ancien chemin `create_dimension_test_portal <destination>` reste
+  disponible.
+
+Details :
+
+- la commande prepare une plateforme dans la dimension source ;
+- elle place le joueur via `ServerPlayer.teleportTo(...)` vanilla ;
+- elle attend 40 ticks serveur ;
+- elle verifie `player.level().dimension()` ;
+- elle cree ensuite le portail minimal dans la source reelle.
+
+Point important :
+
+- un prototype avec `ServerTeleportationManager.forceTeleportPlayer(...)` a ete
+  rejete car il reveillait `ImmPtlChunkTracking.immediatelyUpdateForPlayer`,
+  qui depend de mixins chunk-map encore isoles dans le profil vanilla.
+
+Validation :
+
+- `compileJava processResources` : BUILD SUCCESSFUL ;
+- Overworld -> Overworld controle :
+  - `Client Teleported Statically` : oui ;
+- Overworld -> Nether :
+  - portail source : `minecraft:overworld` ;
+  - destination : `minecraft:the_nether` ;
+  - `Client Changed Dimension from minecraft:overworld to minecraft:the_nether` : oui ;
+  - `Client Teleported Statically` : oui ;
+  - `portal_worldChanged stored enteredNetherPosition` : oui ;
+- Nether -> Overworld :
+  - portail source : `minecraft:the_nether` ;
+  - destination : `minecraft:overworld` ;
+  - `Client Changed Dimension from minecraft:the_nether to minecraft:overworld` : oui ;
+  - `Client Teleported Statically` : oui ;
+  - `No nearby portal` : 0.
+
+End :
+
+- Overworld -> End :
+  - portail source/destination corrects ;
+  - monde client End cree ;
+  - portail selectionne par le test client ;
+  - traversee finale non confirmee ;
+  - le joueur se noie avant `Client Teleported Statically`.
+- End -> Overworld :
+  - non teste car Overworld -> End n'est pas encore valide.
+
+Stabilite :
+
+- crash : 0 sur les runs valides ;
+- `Duplicate entity UUID` : 0 ;
+- `ConcurrentModificationException` : 0 ;
+- `Buffer already closed` : 0 ;
+- renderer, shaderpack, Sodium, Iris, DimLib : non touches.
+
+Recommandation Phase 11.6 :
+
+- bug cible Overworld -> End :
+  - comparer les logs de franchissement local Nether vs End ;
+  - comprendre pourquoi le portail End selectionne ne declenche pas
+    `Client Teleported Statically` ;
+  - garder le chantier hors rendu.
+
+Rapport : `PHASE11.5_NETHER_END_TEST_HARNESS.md`.

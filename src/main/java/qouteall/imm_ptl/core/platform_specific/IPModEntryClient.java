@@ -35,6 +35,8 @@ public class IPModEntryClient implements ClientModInitializer {
         "true".equalsIgnoreCase(System.getenv("IMM_PTL_AUTO_MINIMAL_TRAVERSAL_TEST"));
     private static final String AUTO_DIMENSION_TEST_PORTAL =
         System.getenv("IMM_PTL_AUTO_DIMENSION_TEST_PORTAL");
+    private static final String AUTO_DIMENSION_TEST_SOURCE =
+        System.getenv("IMM_PTL_AUTO_DIMENSION_TEST_SOURCE");
     private static final int AUTO_MINIMAL_TRAVERSAL_DELAY_TICKS =
         parseDevEnvInt("IMM_PTL_AUTO_MINIMAL_TRAVERSAL_DELAY_TICKS", -1);
     private static boolean autoVisibleTestPortalCommandSent;
@@ -96,10 +98,22 @@ public class IPModEntryClient implements ClientModInitializer {
             if (autoVisibleTestPortalTicks >= 60) {
                 autoVisibleTestPortalCommandSent = true;
                 if (AUTO_DIMENSION_TEST_PORTAL != null && !AUTO_DIMENSION_TEST_PORTAL.isBlank()) {
-                    Helper.log("Running dev auto dimension test portal command to " + AUTO_DIMENSION_TEST_PORTAL);
-                    client.getConnection().sendCommand(
-                        "imm_ptl_debug create_dimension_test_portal " + AUTO_DIMENSION_TEST_PORTAL
-                    );
+                    if (AUTO_DIMENSION_TEST_SOURCE != null && !AUTO_DIMENSION_TEST_SOURCE.isBlank()) {
+                        Helper.log(
+                            "Running dev prepared dimension test from " +
+                                AUTO_DIMENSION_TEST_SOURCE + " to " + AUTO_DIMENSION_TEST_PORTAL
+                        );
+                        client.getConnection().sendCommand(
+                            "imm_ptl_debug prepare_dimension_test " +
+                                AUTO_DIMENSION_TEST_SOURCE + " " + AUTO_DIMENSION_TEST_PORTAL
+                        );
+                    }
+                    else {
+                        Helper.log("Running dev auto dimension test portal command to " + AUTO_DIMENSION_TEST_PORTAL);
+                        client.getConnection().sendCommand(
+                            "imm_ptl_debug create_dimension_test_portal " + AUTO_DIMENSION_TEST_PORTAL
+                        );
+                    }
                 }
                 else {
                     Helper.log("Running dev auto visible test portal command");
