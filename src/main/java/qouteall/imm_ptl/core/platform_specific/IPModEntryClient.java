@@ -33,6 +33,10 @@ public class IPModEntryClient implements ClientModInitializer {
         "true".equalsIgnoreCase(System.getenv("IMM_PTL_AUTO_VISIBLE_TEST_PORTAL"));
     private static final boolean AUTO_MINIMAL_TRAVERSAL_TEST =
         "true".equalsIgnoreCase(System.getenv("IMM_PTL_AUTO_MINIMAL_TRAVERSAL_TEST"));
+    private static final String AUTO_DIMENSION_TEST_PORTAL =
+        System.getenv("IMM_PTL_AUTO_DIMENSION_TEST_PORTAL");
+    private static final int AUTO_MINIMAL_TRAVERSAL_DELAY_TICKS =
+        parseDevEnvInt("IMM_PTL_AUTO_MINIMAL_TRAVERSAL_DELAY_TICKS", -1);
     private static boolean autoVisibleTestPortalCommandSent;
     private static int autoVisibleTestPortalTicks;
     private static boolean loggedSodiumPortalPresence;
@@ -74,7 +78,7 @@ public class IPModEntryClient implements ClientModInitializer {
 
         if (
             FabricLoader.getInstance().isDevelopmentEnvironment() &&
-            (AUTO_VISIBLE_TEST_PORTAL || AUTO_MINIMAL_TRAVERSAL_TEST)
+            (AUTO_VISIBLE_TEST_PORTAL || AUTO_DIMENSION_TEST_PORTAL != null || AUTO_MINIMAL_TRAVERSAL_TEST)
         ) {
             ClientTickEvents.END_CLIENT_TICK.register(IPModEntryClient::tickDevPortalTests);
         }
@@ -87,17 +91,25 @@ public class IPModEntryClient implements ClientModInitializer {
             return;
         }
 
-        if (AUTO_VISIBLE_TEST_PORTAL && !autoVisibleTestPortalCommandSent) {
+        if ((AUTO_VISIBLE_TEST_PORTAL || AUTO_DIMENSION_TEST_PORTAL != null) && !autoVisibleTestPortalCommandSent) {
             autoVisibleTestPortalTicks++;
             if (autoVisibleTestPortalTicks >= 60) {
                 autoVisibleTestPortalCommandSent = true;
-                Helper.log("Running dev auto visible test portal command");
-                client.getConnection().sendCommand("imm_ptl_debug create_visible_test_portal");
+                if (AUTO_DIMENSION_TEST_PORTAL != null && !AUTO_DIMENSION_TEST_PORTAL.isBlank()) {
+                    Helper.log("Running dev auto dimension test portal command to " + AUTO_DIMENSION_TEST_PORTAL);
+                    client.getConnection().sendCommand(
+                        "imm_ptl_debug create_dimension_test_portal " + AUTO_DIMENSION_TEST_PORTAL
+                    );
+                }
+                else {
+                    Helper.log("Running dev auto visible test portal command");
+                    client.getConnection().sendCommand("imm_ptl_debug create_visible_test_portal");
+                }
             }
         }
 
         if (
-            AUTO_VISIBLE_TEST_PORTAL && autoVisibleTestPortalCommandSent &&
+            (AUTO_VISIBLE_TEST_PORTAL || AUTO_DIMENSION_TEST_PORTAL != null) && autoVisibleTestPortalCommandSent &&
             FabricLoader.getInstance().isModLoaded("sodium") && !loggedSodiumPortalPresence
         ) {
             sodiumPortalPresenceTicks++;
@@ -116,7 +128,9 @@ public class IPModEntryClient implements ClientModInitializer {
 
         if (AUTO_MINIMAL_TRAVERSAL_TEST && !autoMinimalTraversalCommandSent) {
             autoMinimalTraversalTicks++;
-            int delay = AUTO_VISIBLE_TEST_PORTAL ? 140 : 80;
+            int delay = AUTO_MINIMAL_TRAVERSAL_DELAY_TICKS > 0
+                ? AUTO_MINIMAL_TRAVERSAL_DELAY_TICKS
+                : (AUTO_VISIBLE_TEST_PORTAL || AUTO_DIMENSION_TEST_PORTAL != null) ? 140 : 80;
             if (autoMinimalTraversalTicks >= delay) {
                 autoMinimalTraversalCommandSent = true;
                 Helper.log("Running dev auto minimal portal traversal command");
@@ -126,5 +140,19 @@ public class IPModEntryClient implements ClientModInitializer {
             }
         }
     }
-    
+
+    private static int parseDevEnvInt(String name, int defaultValue) {
+        String value = System.getenv(name);
+        if (value == null || value.isBlank()) {
+            return defaultValue;
+        }
+
+        try {
+            return Integer.parseInt(value);
+        }
+        catch (NumberFormatException e) {
+            Helper.err("Invalid " + name + "=" + value + "; using " + defaultValue);
+            return defaultValue;
+        }
+    }
 }

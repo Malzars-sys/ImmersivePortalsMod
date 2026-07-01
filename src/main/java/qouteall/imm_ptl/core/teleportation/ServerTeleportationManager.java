@@ -431,7 +431,7 @@ public class ServerTeleportationManager {
         
         Entity vehicle = player.getVehicle();
         if (vehicle != null) {
-            ((IEServerPlayerEntity) player).ip_stopRidingWithoutTeleportRequest();
+            stopRidingWithoutTeleportRequest(player);
         }
         
         Vec3 oldPos = player.position();
@@ -460,7 +460,7 @@ public class ServerTeleportationManager {
                 player.position().add(offset),
                 McHelper.lastTickPosOf(player).add(offset)
             );
-            ((IEServerPlayerEntity) player).ip_startRidingWithoutTeleportRequest(vehicle);
+            startRidingWithoutTeleportRequest(player, vehicle);
             McHelper.adjustVehicle(player);
         }
         
@@ -482,7 +482,44 @@ public class ServerTeleportationManager {
         );
         
         //update advancements
-        ((IEServerPlayerEntity) player).portal_worldChanged(fromWorld, oldPos);
+        onServerPlayerWorldChanged(player, fromWorld, oldPos);
+    }
+
+    private static void stopRidingWithoutTeleportRequest(ServerPlayer player) {
+        if (player instanceof IEServerPlayerEntity serverPlayer) {
+            serverPlayer.ip_stopRidingWithoutTeleportRequest();
+            return;
+        }
+
+        player.stopRiding();
+        LOGGER.warn("IEServerPlayerEntity is unavailable; using vanilla stopRiding fallback");
+    }
+
+    private static void startRidingWithoutTeleportRequest(ServerPlayer player, Entity vehicle) {
+        if (player instanceof IEServerPlayerEntity serverPlayer) {
+            serverPlayer.ip_startRidingWithoutTeleportRequest(vehicle);
+            return;
+        }
+
+        player.startRiding(vehicle, true, false);
+        LOGGER.warn("IEServerPlayerEntity is unavailable; using vanilla startRiding fallback");
+    }
+
+    private static void onServerPlayerWorldChanged(
+        ServerPlayer player,
+        ServerLevel fromWorld,
+        Vec3 oldPos
+    ) {
+        if (player instanceof IEServerPlayerEntity serverPlayer) {
+            serverPlayer.portal_worldChanged(fromWorld, oldPos);
+            return;
+        }
+
+        LOGGER.warn(
+            "IEServerPlayerEntity is unavailable; skipping portal_worldChanged hook for {} -> {}",
+            fromWorld.dimension().identifier(),
+            player.level().dimension().identifier()
+        );
     }
     
     private void manageGlobalPortalTeleportation() {

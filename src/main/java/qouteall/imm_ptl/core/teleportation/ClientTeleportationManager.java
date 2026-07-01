@@ -59,6 +59,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
+import java.lang.reflect.Field;
 
 @Environment(EnvType.CLIENT)
 public class ClientTeleportationManager {
@@ -82,6 +83,7 @@ public class ClientTeleportationManager {
     private static final int teleportLimitPerFrame = 3;
     
     private static long teleportationCounter = 0;
+    private static int teleportationDebugLogCounter = 0;
     
     public static void init() {
         IPGlobal.POST_CLIENT_TICK_EVENT.register(
@@ -228,6 +230,9 @@ public class ClientTeleportationManager {
         Vec3 thisTickEyePos = McHelper.getEyePos(player);
         
         ArrayList<TeleportationUtil.Teleportation> teleportationCandidates = new ArrayList<>();
+        ArrayList<String> teleportationDebugPortalStatus = IPGlobal.teleportationDebugEnabled
+            ? new ArrayList<>()
+            : null;
         IPMcHelper.traverseNearbyPortals(
             player.level(),
             thisFrameEyePos,
@@ -235,6 +240,19 @@ public class ClientTeleportationManager {
             portal -> {
                 if (!portal.canTeleportEntity(player)) {
                     return;
+                }
+
+                if (teleportationDebugPortalStatus != null && teleportationDebugPortalStatus.size() < 5) {
+                    Vec3 lastLocalPos = portal.transformFromWorldToPortalLocal(lastPlayerEyePos);
+                    Vec3 currentLocalPos = portal.transformFromWorldToPortalLocal(thisFrameEyePos);
+                    teleportationDebugPortalStatus.add(
+                        "%s localZ %.4f -> %.4f dest %s".formatted(
+                            portal,
+                            lastLocalPos.z(),
+                            currentLocalPos.z(),
+                            portal.getDestDim().identifier()
+                        )
+                    );
                 }
                 
                 // Separately handle dynamic teleportation and static teleportation.
@@ -280,6 +298,25 @@ public class ClientTeleportationManager {
                 }
             }
         );
+
+        if (IPGlobal.teleportationDebugEnabled && teleportationDebugLogCounter < 80) {
+            teleportationDebugLogCounter++;
+            if (teleportationDebugLogCounter % 10 == 0 || !teleportationCandidates.isEmpty()) {
+                LOGGER.info(
+                    """
+                        Client teleport debug tick
+                        player dim: {}
+                        last/current eye: {} -> {}
+                        candidates: {}
+                        nearby portals: {}""",
+                    player.level().dimension().identifier(),
+                    lastPlayerEyePos,
+                    thisFrameEyePos,
+                    teleportationCandidates.size(),
+                    teleportationDebugPortalStatus
+                );
+            }
+        }
         
         TeleportationUtil.Teleportation teleportation = teleportationCandidates
             .stream()
@@ -482,7 +519,7 @@ public class ClientTeleportationManager {
         ((IEEntity) player).ip_unsetRemoved();
         
         toWorld.addEntity(player);
-        ((IEAbstractClientPlayer) player).ip_setClientLevel(toWorld);
+        setClientLevel(player, toWorld);
         
         IEGameRenderer gameRenderer = (IEGameRenderer) Minecraft.getInstance().gameRenderer;
         gameRenderer.ip_setLightmapTextureManager(ClientWorldLoader
@@ -526,6 +563,41 @@ public class ClientTeleportationManager {
         FogRendererContext.onPlayerTeleport(fromDimension, toDimension);
         
         O_O.onPlayerChangeDimensionClient(fromDimension, toDimension);
+    }
+
+    private static void setClientLevel(LocalPlayer player, ClientLevel toWorld) {
+        if (player instanceof IEAbstractClientPlayer clientPlayer) {
+            clientPlayer.ip_setClientLevel(toWorld);
+            return;
+        }
+
+        Class<?> currentClass = player.getClass();
+        while (currentClass != null) {
+            for (String fieldName : new String[]{"clientLevel", "f", "field_17892"}) {
+                try {
+                    Field field = currentClass.getDeclaredField(fieldName);
+                    field.setAccessible(true);
+                    field.set(player, toWorld);
+                    LOGGER.info(
+                        "Updated LocalPlayer clientLevel via reflection field {} for interdimensional teleportation",
+                        fieldName
+                    );
+                    return;
+                }
+                catch (NoSuchFieldException ignored) {
+                    // Try the next known name, then walk up the class hierarchy.
+                }
+                catch (IllegalAccessException e) {
+                    throw new RuntimeException("Failed to update LocalPlayer clientLevel", e);
+                }
+            }
+            currentClass = currentClass.getSuperclass();
+        }
+
+        LOGGER.warn(
+            "LocalPlayer clientLevel field is not present in this Minecraft version; " +
+                "continuing interdimensional teleport with Entity level and Minecraft level updates"
+        );
     }
     
     private static void changePlayerMotionIfCollidingWithPortal() {

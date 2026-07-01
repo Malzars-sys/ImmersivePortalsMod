@@ -3412,3 +3412,67 @@ Recommandation Phase 11.3 :
   - sans toucher au renderer, shaderpack, Sodium, Iris, DimLib ou AlternateDimensions.
 
 Rapport : `PHASE11.2_NETHER_END_TRAVERSAL_REGRESSION.md`.
+
+### 11.3 Bug cible traversée interdimensionnelle vanilla
+
+Objectif :
+
+- diagnostiquer l'absence de `Client Teleported Statically` sur les tests
+  interdimensionnels Phase 11.2 ;
+- ne pas toucher au renderer, aux pipelines, aux shaders, Sodium, Iris, DimLib
+  ou AlternateDimensions.
+
+Correctifs :
+
+- ajout du flag dev `IMM_PTL_AUTO_DIMENSION_TEST_PORTAL=<dimension>` pour creer
+  un portail de test interdimensionnel depuis le client, avec une vraie source joueur ;
+- stabilisation de `/imm_ptl_client_debug test_minimal_portal_traversal` :
+  - logs dimension/source/destination ;
+  - logs position monde/local ;
+  - reset client sur la position de depart avant impulsion ;
+- instrumentation limitee de `ClientTeleportationManager` ;
+- portails dev `imm_ptl:minimal_test_portal` :
+  - collision cross-portal desactivee pour isoler la teleporation du chargement de
+    chunks destination ;
+- transition client :
+  - fallback si l'ancien champ `LocalPlayer.clientLevel` n'existe plus en 26.1 ;
+- transition serveur :
+  - fallback vanilla si `IEServerPlayerEntity` n'est pas applique a `ServerPlayer`.
+
+Resultats :
+
+- controle Overworld -> Overworld :
+  - `localZ 0.2500 -> -0.4500` ;
+  - candidat de teleportation : 1 ;
+  - `Client Teleported Statically` : oui.
+- Overworld -> Nether :
+  - `Client World Created minecraft:the_nether` : oui ;
+  - `Client Changed Dimension from minecraft:overworld to minecraft:the_nether` : oui ;
+  - `Client Teleported Statically` : oui ;
+  - crash : 0 ;
+  - erreur paquet serveur finale : 0.
+
+Limites :
+
+- `portal_worldChanged` cote serveur est actuellement en fallback avec warning si
+  `IEServerPlayerEntity` est absent ;
+- les triggers/advancements exacts de changement de dimension doivent etre audites
+  separement ;
+- le vrai chargement de chunks cross-portal reste distinct du test minimal.
+
+Validation :
+
+- `compileJava processResources` : BUILD SUCCESSFUL ;
+- logs :
+  - `runclient-phase11.3-overworld-control.txt` ;
+  - `runclient-phase11.3-overworld-to-nether.txt`.
+
+Recommandation Phase 11.4 :
+
+- phase ciblee `ServerPlayer` / triggers dimension :
+  - restaurer proprement l'equivalent de `portal_worldChanged` ;
+  - verifier `enteredNetherPosition` ;
+  - revalider Nether -> Overworld ;
+  - repousser End jusqu'a confirmation serveur complete.
+
+Rapport : `PHASE11.3_INTERDIMENSIONAL_TRAVERSAL_BUG_AUDIT.md`.

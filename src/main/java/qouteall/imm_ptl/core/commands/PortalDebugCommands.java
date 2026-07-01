@@ -142,6 +142,7 @@ public class PortalDebugCommands {
         portal.setDestination(destination);
         portal.setOrientationAndSize(axisW, axisH, 2, 3);
         portal.portalTag = "imm_ptl:minimal_test_portal";
+        portal.setCrossPortalCollisionEnabled(false);
         McHelper.spawnServerEntity(portal);
 
         if (placePlayerFacingPortal) {

@@ -240,6 +240,12 @@ public class ClientDebugCommand {
                 Vec3 startEyePos = portal.getOriginPos().add(portal.getNormal().scale(0.25));
                 Vec3 startFeetPos = startEyePos.subtract(eyeOffset);
                 Vec3 traversalVelocity = portal.getNormal().scale(-0.7);
+                Vec3 currentEyePos = McHelper.getEyePos(player);
+                Vec3 currentLocalPos = portal.transformFromWorldToPortalLocal(currentEyePos);
+                Vec3 startLocalPos = portal.transformFromWorldToPortalLocal(startEyePos);
+                Vec3 nextLocalPos = portal.transformFromWorldToPortalLocal(
+                    startEyePos.add(traversalVelocity)
+                );
                 MinecraftServer server = Minecraft.getInstance().getSingleplayerServer();
                 if (server == null) {
                     context.getSource().sendFeedback(Component.literal(
@@ -256,9 +262,46 @@ public class ClientDebugCommand {
                         );
                     }
                 });
+                LOGGER.info(
+                    """
+                        Minimal traversal debug command selected portal {}
+                        player dimension: {}
+                        portal destination: {}
+                        current eye/local: {} / {}
+                        start eye/local: {} / {}
+                        velocity: {}
+                        next local after velocity: {}""",
+                    portal,
+                    player.level().dimension().identifier(),
+                    portal.getDestDim().identifier(),
+                    currentEyePos, currentLocalPos,
+                    startEyePos, startLocalPos,
+                    traversalVelocity,
+                    nextLocalPos
+                );
                 IPGlobal.CLIENT_TASK_LIST.addTask(MyTaskList.withDelay(
                     10,
-                    MyTaskList.oneShotTask(() -> player.setDeltaMovement(traversalVelocity))
+                    MyTaskList.oneShotTask(() -> {
+                        Vec3 beforeEyePos = McHelper.getEyePos(player);
+                        Vec3 beforeLocalPos = portal.transformFromWorldToPortalLocal(beforeEyePos);
+                        player.setPos(startFeetPos);
+                        player.setDeltaMovement(traversalVelocity);
+                        Vec3 resetEyePos = McHelper.getEyePos(player);
+                        LOGGER.info(
+                            """
+                                Minimal traversal debug movement applied
+                                player dimension: {}
+                                before eye/local: {} / {}
+                                reset eye/local: {} / {}
+                                velocity: {}
+                                expected next local: {}""",
+                            player.level().dimension().identifier(),
+                            beforeEyePos, beforeLocalPos,
+                            resetEyePos, portal.transformFromWorldToPortalLocal(resetEyePos),
+                            traversalVelocity,
+                            portal.transformFromWorldToPortalLocal(resetEyePos.add(traversalVelocity))
+                        );
+                    })
                 ));
                 IPGlobal.teleportationDebugEnabled = true;
                 context.getSource().sendFeedback(Component.literal(
