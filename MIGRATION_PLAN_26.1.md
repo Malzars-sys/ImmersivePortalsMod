@@ -3713,3 +3713,93 @@ Recommandation Phase 11.7 :
   - End -> Overworld.
 
 Rapport : `PHASE11.6_OVERWORLD_TO_END_TRAVERSAL_BUG.md`.
+
+### 11.7 Regression sauvegarde / rechargement des portails interdimensionnels
+
+Objectif :
+
+- verifier que les portails minimaux interdimensionnels crees par le harnais
+  Phase 11.5/11.6 sont sauvegardes, recharges, resynchronises cote client
+  et restent traversables apres relance du monde ;
+- ne pas toucher au renderer, pipelines, shaders, Sodium, Iris, DimLib,
+  AlternateDimensions ou fallbacks shaderpack.
+
+Methode :
+
+- premiere run avec creation automatique du portail :
+  - `IMM_PTL_AUTO_DIMENSION_TEST_SOURCE=<source>` ;
+  - `IMM_PTL_AUTO_DIMENSION_TEST_PORTAL=<destination>` ;
+  - `IMM_PTL_AUTO_MINIMAL_TRAVERSAL_TEST=true` ;
+- deuxieme run du meme monde sans recreation de portail ;
+- datapack local de test utilise uniquement pour replacer le joueur dans la
+  dimension source ;
+- verification que le portail selectionne apres reload est le portail
+  sauvegarde/recharge.
+
+Pieges de harnais :
+
+- trois fonctions `.mcfunction` de reload avaient ete ecrites sur une seule
+  ligne, ce qui transformait le repositionnement en simple `say` ;
+- une reecriture PowerShell en UTF-8 avec BOM etait refusee par le parser
+  Minecraft 26.1 ;
+- les fonctions de test ont ete reecrites en UTF-8 sans BOM dans les mondes
+  `run/saves`, sans modification du code runtime.
+
+Validation :
+
+- Overworld -> Nether :
+  - creation : oui ;
+  - premiere traversee : oui ;
+  - reload sans recreation : oui ;
+  - portail client recharge : oui ;
+  - `Client Teleported Statically` apres reload : oui.
+- Nether -> Overworld :
+  - creation : oui ;
+  - premiere traversee : oui ;
+  - reload sans recreation : oui ;
+  - reposition source verifie : oui ;
+  - portail client recharge : oui ;
+  - `Client Teleported Statically` apres reload : oui ;
+  - anomalie restante : `ImmPtlClientChunkMap Error deserializing chunk
+    packet minecraft:overworld`, puis `Network Protocol Error`.
+- Overworld -> End :
+  - creation : oui ;
+  - premiere traversee : oui ;
+  - reload sans recreation : oui ;
+  - reposition source verifie : oui ;
+  - portail client recharge : oui ;
+  - `Client Teleported Statically` apres reload : oui.
+- End -> Overworld :
+  - creation : oui ;
+  - premiere traversee : oui ;
+  - reload sans recreation : oui ;
+  - reposition source verifie : oui ;
+  - portail client recharge : oui ;
+  - `Client Teleported Statically` apres reload : oui.
+
+Stabilite :
+
+- `Duplicate entity UUID` : 0 ;
+- `ConcurrentModificationException` : 0 ;
+- `Buffer already closed` : 0 ;
+- `Missing program` : 0 ;
+- `UnsupportedOperationException` : 0 ;
+- crash report : 0 ;
+- renderer, shaderpack, Sodium, Iris, DimLib : non touches.
+
+Compilation :
+
+- aucun code source modifie pendant Phase 11.7 ;
+- compilation non relancee ;
+- derniere baseline compilee : Phase 11.6, `compileJava processResources`
+  BUILD SUCCESSFUL.
+
+Recommandation Phase 11.8 :
+
+- bug cible synchronisation chunk apres Nether -> Overworld :
+  - classe observee : `ImmPtlClientChunkMap` ;
+  - symptome : erreur de deserialisation de chunk Overworld ;
+  - consequence : deconnexion `Network Protocol Error` ;
+  - garder le chantier hors rendu.
+
+Rapport : `PHASE11.7_DIMENSION_PORTAL_SAVE_RELOAD_REGRESSION.md`.
