@@ -4028,3 +4028,67 @@ Conclusion :
   sauvegarde du harnais.
 
 Rapport : `PHASE11.10_END_TO_OVERWORLD_RELOAD_PORTAL_SYNC.md`.
+
+### 11.11 Matrice finale vanilla 4 directions avant alpha
+
+Objectif :
+
+- rejouer les quatre directions interdimensionnelles reelles avec le harnais
+  stabilise de Phase 11.10 ;
+- verifier creation + traversee initiale ;
+- relancer le meme monde sans recreer le portail ;
+- verifier la traversee apres reload ;
+- ne pas rouvrir le rendu, Sodium, Iris, DimLib, AlternateDimensions,
+  `ImmPtlClientChunkMap`, chunk sync global ou chunk tracking avance.
+
+Validation effectuee :
+
+- `Overworld -> Nether` :
+  - creation + traversee : OK ;
+  - reload sans recreation : OK ;
+  - `Client Teleported Statically` observe aux deux etapes.
+- `Nether -> Overworld` :
+  - creation + traversee : OK avec delai de harnais plus long ;
+  - reload sans recreation : OK ;
+  - `Client Teleported Statically` observe aux deux etapes.
+- `Overworld -> End` :
+  - creation + traversee : OK ;
+  - reload sans recreation : OK ;
+  - `Client Teleported Statically` observe aux deux etapes.
+- `End -> Overworld` :
+  - creation + traversee : OK avec sauvegarde opt-in du harnais ;
+  - reload sans recreation : OK ;
+  - `Client Teleported Statically` observe aux deux etapes.
+
+Signaux negatifs finaux :
+
+- `No nearby portal` : 0 ;
+- `Network Protocol Error` : 0 ;
+- `Error deserializing chunk packet` : 0 ;
+- `Ignoring incompatible vanilla chunk packet after world switch` : 0 ;
+- `Duplicate entity UUID` : 0 ;
+- `ConcurrentModificationException` : 0 ;
+- `Buffer already closed` : 0 ;
+- `Missing program` : 0 ;
+- `UnsupportedOperationException` : 0 ;
+- crash runtime : 0.
+
+Notes :
+
+- aucun code runtime n'a ete modifie pendant Phase 11.11 ;
+- la baseline compile reste Phase 11.10 `compileJava processResources` :
+  BUILD SUCCESSFUL ;
+- les dimensions Nether/End source demandent des delais de harnais plus
+  prudents que le cas Overworld source ;
+- le flag opt-in `IMM_PTL_SAVE_AFTER_MINIMAL_TEST_PORTAL=true` reste necessaire
+  pour fiabiliser les runs automatises de creation + reload.
+
+Conclusion :
+
+- matrice vanilla finale 4 directions : OK ;
+- alpha vanilla minimale recommandee du point de vue traversee
+  interdimensionnelle + sauvegarde/reload ;
+- prochaine etape recommandee : audit de preparation alpha/package, sans
+  rouvrir le rendu ni les compatibilites lourdes.
+
+Rapport : `PHASE11.11_FINAL_VANILLA_DIMENSION_RELOAD_MATRIX.md`.
