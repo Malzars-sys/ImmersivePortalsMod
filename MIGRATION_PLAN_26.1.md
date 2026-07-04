@@ -4302,3 +4302,54 @@ Conclusion :
   du tag local annote.
 
 Rapport : `PHASE12.2_ALPHA_RELEASE_CHECKLIST.md`.
+
+### Phase 13.0 - Audit visuel vanilla du rendu de portail minimal
+
+Statut : termine le 4 juillet 2026.
+
+Resume :
+
+- audit uniquement ;
+- aucun changement runtime ;
+- `compileJava processResources` : BUILD SUCCESSFUL ;
+- portail minimal cree dans un monde de test propre ;
+- `PortalEntityRenderer`, `IEGameRenderer`, `IECamera`, `IEWorldRenderer` et
+  `IEParticleManager` actifs ;
+- framebuffer secondaire initialise ;
+- rendu minimal recursif declenche ;
+- profondeur principale et profondeur secondaire disponibles ;
+- stencil public indisponible ;
+- pipeline `depth-masked-equal` utilise ;
+- quad texture soumis via `SubmitNodeCollector` ;
+- capture generee ;
+- conclusion : vue de l'autre cote techniquement visible, mais rendu encore
+  proof-grade / non final.
+
+Prochaine etape recommandee :
+
+- design API Phase 14.0 et/ou corrections visuelles ulterieures avec un
+  harnais QA plus fiable.
+
+Rapport :
+
+- `docs/migration/phases/PHASE13.0_VANILLA_PORTAL_RENDER_VISUAL_AUDIT.md`.
+
+### Phase 14.0 - Design API publique pour mods tiers
+
+Statut : termine le 4 juillet 2026.
+
+Resume :
+
+- phase design uniquement ;
+- aucun changement runtime ;
+- document principal : `docs/api/API_DESIGN_14.0.md` ;
+- objectif : transformer Immersive Portals en base API utilisable par d'autres
+  mods ;
+- cas cible : WHA / Witch Hate Atelier, avec pentacles magiques relies par
+  portails ;
+- conclusion : API publique faisable maintenant, a condition de commencer par
+  une couche serveur haut niveau.
+
+Prochaine phase recommandee :
+
+- Phase 14.1 - Minimal Server-Side Portal API.
