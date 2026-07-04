@@ -3933,3 +3933,98 @@ Conclusion :
   portail recharge cote client.
 
 Rapport : `PHASE11.9_DIMENSION_RELOAD_REGRESSION_AFTER_CHUNK_FIX.md`.
+
+### 11.10 Bug cible End -> Overworld reload / No nearby portal
+
+Objectif :
+
+- diagnostiquer pourquoi `End -> Overworld` reload pouvait produire
+  `No nearby portal` dans le harnais Phase 11.9 ;
+- ne pas rouvrir le rendu ;
+- ne pas toucher Sodium, Iris, DimLib, AlternateDimensions, shaderpack,
+  `ImmPtlClientChunkMap`, chunk sync global ou chunk tracking avance.
+
+Diagnostic :
+
+- le joueur etait bien cote client dans `minecraft:the_end` ;
+- la position joueur etait proche de la zone attendue ;
+- `test_minimal_portal_traversal` ne trouvait aucun portail car le monde client
+  `minecraft:the_end` contenait :
+  - `entityListPortals=0` ;
+  - `renderingPortals=0` ;
+- donc l'echec n'etait pas une distance trop grande ;
+- le portail normal End cree par le harnais n'etait pas disponible cote client
+  apres reload.
+
+Cause prouvee :
+
+- les runs automatises pouvaient tuer le client avant un point de sauvegarde
+  fiable du portail normal nouvellement cree dans l'End ;
+- au reload, le datapack replacait bien le joueur dans l'End, mais le portail
+  n'etait pas recharge/synchronise cote client ;
+- `No nearby portal` venait donc du harnais de test, pas du correctif chunk
+  Phase 11.8.
+
+Correctif limite au harnais/debug :
+
+- `PortalDebugCommands` :
+  - ajout du flag opt-in `IMM_PTL_SAVE_AFTER_MINIMAL_TEST_PORTAL=true` ;
+  - ajout de `IMM_PTL_SAVE_AFTER_MINIMAL_TEST_PORTAL_DELAY_TICKS` ;
+  - quand actif, le harnais planifie `server.saveAllChunks(true, true, false)`
+    apres creation du portail minimal ;
+  - comportement runtime normal inchange par defaut.
+- `ClientDebugCommand` :
+  - ajout d'un diagnostic limite quand `test_minimal_portal_traversal` ne
+    trouve aucun portail ;
+  - log de la dimension client, position joueur, nombre de portails par monde
+    client et portail le plus proche si disponible.
+
+Validation :
+
+- `compileJava processResources` : BUILD SUCCESSFUL ;
+- monde : `Phase1110EndToOverworldReloadDebug` ;
+- `End -> Overworld` premiere traversee :
+  - portail cree ;
+  - portail selectionne cote client ;
+  - `Client Changed Dimension from minecraft:the_end to minecraft:overworld` ;
+  - `Client Teleported Statically` ;
+  - sauvegarde forcee du harnais ;
+  - `ThreadedAnvilChunkStorage: All dimensions are saved`.
+- `End -> Overworld` reload sans recreation :
+  - datapack reload execute en UTF-8 sans BOM ;
+  - joueur replace dans `minecraft:the_end` ;
+  - portail recharge selectionne cote client ;
+  - `Client Changed Dimension from minecraft:the_end to minecraft:overworld` ;
+  - `Client Teleported Statically`.
+- compteurs finaux :
+  - `No nearby portal` : 0 ;
+  - `Network Protocol Error` : 0 ;
+  - `Error deserializing chunk packet` : 0 ;
+  - `Duplicate entity UUID` : 0 ;
+  - `ConcurrentModificationException` : 0 ;
+  - `Buffer already closed` : 0 ;
+  - `Missing program` : 0 ;
+  - `UnsupportedOperationException` : 0.
+- mini-verification `Overworld -> End` reload :
+  - `Client Teleported Statically` : oui ;
+  - `No nearby portal` : 0 ;
+  - erreurs reseau/chunk : 0.
+
+Logs :
+
+- `compile-phase11.10-26.1.txt` ;
+- `runclient-phase11.10-end-to-overworld-reload.txt` ;
+- `runclient-phase11.10-end-to-overworld-reload-stderr.txt` ;
+- `runclient-phase11.10-overworld-to-end-reload.txt` ;
+- `runclient-phase11.10-overworld-to-end-reload-stderr.txt`.
+
+Conclusion :
+
+- `End -> Overworld` reload est maintenant stable dans le harnais propre avec
+  sauvegarde forcee opt-in ;
+- le runtime portail et le rendu restent inchanges ;
+- prochaine etape recommandee : rejouer une matrice courte 4 directions ou
+  lancer un soak test sauvegarde/rechargement long terme avec le flag de
+  sauvegarde du harnais.
+
+Rapport : `PHASE11.10_END_TO_OVERWORLD_RELOAD_PORTAL_SYNC.md`.

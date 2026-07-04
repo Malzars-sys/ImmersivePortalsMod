@@ -232,6 +232,7 @@ public class ClientDebugCommand {
                     .min(java.util.Comparator.comparingDouble(player::distanceToSqr))
                     .orElse(null);
                 if (portal == null) {
+                    logMinimalTraversalNoNearbyPortal(player);
                     context.getSource().sendFeedback(Component.literal("No nearby portal."));
                     return 0;
                 }
@@ -798,6 +799,70 @@ public class ClientDebugCommand {
         );
         
         dispatcher.register(builder);
+    }
+
+    private static void logMinimalTraversalNoNearbyPortal(LocalPlayer player) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("Minimal traversal found no nearby portal\n");
+        builder.append("client player dimension: ")
+            .append(player.level().dimension().identifier())
+            .append('\n');
+        builder.append("client player position: ")
+            .append(player.position())
+            .append('\n');
+
+        Iterable<ClientLevel> worlds = ClientWorldLoader.getIsInitialized()
+            ? ClientWorldLoader.getClientWorlds()
+            : java.util.List.of((ClientLevel) player.level());
+
+        for (ClientLevel world : worlds) {
+            int entityListPortals = 0;
+            int renderingPortals = 0;
+            double nearestDistance = Double.POSITIVE_INFINITY;
+            Portal nearestPortal = null;
+
+            EntityTickList entityList = ((IEClientWorld) world).ip_getEntityList();
+            final int[] entityListCounter = {0};
+            entityList.forEach(e -> {
+                if (e instanceof Portal) {
+                    entityListCounter[0]++;
+                }
+            });
+            entityListPortals = entityListCounter[0];
+
+            for (Entity entity : world.entitiesForRendering()) {
+                if (entity instanceof Portal portal) {
+                    renderingPortals++;
+                    double distance = portal.distanceToSqr(player);
+                    if (world == player.level() && distance < nearestDistance) {
+                        nearestDistance = distance;
+                        nearestPortal = portal;
+                    }
+                }
+            }
+
+            builder.append("client world ")
+                .append(world.dimension().identifier())
+                .append(" entityListPortals=")
+                .append(entityListPortals)
+                .append(" renderingPortals=")
+                .append(renderingPortals);
+
+            if (world == player.level()) {
+                builder.append(" nearestInCurrentWorld=");
+                if (nearestPortal == null) {
+                    builder.append("none");
+                }
+                else {
+                    builder.append(nearestPortal)
+                        .append(" distance=")
+                        .append(Math.sqrt(nearestDistance));
+                }
+            }
+            builder.append('\n');
+        }
+
+        LOGGER.info(builder.toString());
     }
     
     private static void registerPortalWandCommands(

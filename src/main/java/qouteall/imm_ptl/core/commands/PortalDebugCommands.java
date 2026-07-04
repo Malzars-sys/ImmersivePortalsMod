@@ -85,6 +85,10 @@ public class PortalDebugCommands {
     private static final int DIMENSION_TEST_FLOOR_Y = 119;
     private static final int DIMENSION_TEST_AIR_MIN_Y = 120;
     private static final int DIMENSION_TEST_AIR_MAX_Y = 126;
+    private static final boolean SAVE_AFTER_MINIMAL_TEST_PORTAL =
+        "true".equalsIgnoreCase(System.getenv("IMM_PTL_SAVE_AFTER_MINIMAL_TEST_PORTAL"));
+    private static final int SAVE_AFTER_MINIMAL_TEST_PORTAL_DELAY_TICKS =
+        parseDevEnvInt("IMM_PTL_SAVE_AFTER_MINIMAL_TEST_PORTAL_DELAY_TICKS", 100);
 
     static void registerDevelopmentCommands(
         CommandDispatcher<CommandSourceStack> dispatcher
@@ -161,6 +165,20 @@ public class PortalDebugCommands {
         portal.setCrossPortalCollisionEnabled(false);
         McHelper.spawnServerEntity(portal);
 
+        if (SAVE_AFTER_MINIMAL_TEST_PORTAL) {
+            MinecraftServer server = world.getServer();
+            ServerTaskList.of(server).addTask(MyTaskList.withDelay(
+                SAVE_AFTER_MINIMAL_TEST_PORTAL_DELAY_TICKS,
+                MyTaskList.oneShotTask(() -> {
+                    LOGGER.info(
+                        "Saving all chunks after minimal test portal creation at {} in {}",
+                        origin, world.dimension().identifier()
+                    );
+                    server.saveAllChunks(true, true, false);
+                })
+            ));
+        }
+
         if (placePlayerFacingPortal) {
             Vec3 viewerPos = origin.subtract(normal.scale(5)).subtract(0, 1.5, 0);
             player.connection.teleport(
@@ -183,6 +201,20 @@ public class PortalDebugCommands {
             )
         ));
         return 1;
+    }
+
+    private static int parseDevEnvInt(String name, int defaultValue) {
+        String value = System.getenv(name);
+        if (value == null || value.isBlank()) {
+            return defaultValue;
+        }
+        try {
+            return Integer.parseInt(value);
+        }
+        catch (NumberFormatException e) {
+            LOGGER.warn("Invalid {}={}; using {}", name, value, defaultValue);
+            return defaultValue;
+        }
     }
 
     private static int prepareDimensionTest(
