@@ -3,6 +3,7 @@ package qouteall.imm_ptl.api;
 import net.minecraft.world.entity.Entity;
 
 public enum PortalRemovalReason {
+    COMMAND(Entity.RemovalReason.KILLED),
     DISCARDED(Entity.RemovalReason.DISCARDED),
     KILLED(Entity.RemovalReason.KILLED),
     UNLOADED_TO_CHUNK(Entity.RemovalReason.UNLOADED_TO_CHUNK);

@@ -147,6 +147,7 @@ public class PortalCommand {
         builder.then(euler);
         
         dispatcher.register(builder);
+        PortalApiCommands.register(dispatcher);
         PortalDebugCommands.registerDevelopmentCommands(dispatcher);
     }
     

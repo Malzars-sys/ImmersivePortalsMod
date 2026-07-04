@@ -4414,6 +4414,53 @@ Prochaine phase recommandee :
 
 - Phase 14.2 - Anchor / pentacle API et evenements publics.
 
+### Phase 14.1C - Commandes generales basees sur l'API publique
+
+Statut : implementation terminee le 4 juillet 2026.
+
+Objectif :
+
+- ajouter un petit harnais de commandes generales pour tester l'API publique ;
+- eviter une deuxieme API parallele ;
+- faire passer creation/suppression par `PortalApi` / `PortalBuilder` /
+  `PortalHandle` ;
+- ne pas toucher au renderer, Sodium, Iris, DimLib, AlternateDimensions,
+  teleportation ou chunk tracking.
+
+Commandes ajoutees :
+
+- `/imm_ptl_api create_forward [distance] [width] [height]` ;
+- `/imm_ptl_api create_linked_forward [distance] [width] [height]` ;
+- `/imm_ptl_api create_floor_linked [distance] [size]` ;
+- `/imm_ptl_api inspect_nearest [radius]` ;
+- `/imm_ptl_api list_nearby [radius]` ;
+- `/imm_ptl_api remove_nearest [radius]`.
+
+Regle de permission :
+
+- niveau permission 2.
+
+Validation :
+
+- `compileJava processResources` : BUILD SUCCESSFUL ;
+- `build` : BUILD SUCCESSFUL ;
+- runtime non execute dans cette phase.
+
+Limites :
+
+- commandes experimentales ;
+- les mods tiers doivent appeler `qouteall.imm_ptl.api` directement ;
+- `create_floor_linked` sert a QA pentacle/WHA, pas a promettre un rendu
+  horizontal final.
+
+Rapport :
+
+- `docs/api/PHASE14.1C_PUBLIC_API_COMMANDS.md`.
+
+Prochaine phase recommandee :
+
+- Phase 14.2 - Anchor / pentacle API et evenements publics.
+
 ### Phase 14.1B - Runtime smoke test de l'API publique minimale
 
 Statut : termine le 4 juillet 2026.

@@ -123,6 +123,37 @@ IMM_PTL_AUTO_API_SMOKE_TEST=true
 The harness is for QA only. Third-party mods should call `PortalApi` directly
 instead of invoking debug commands.
 
+## General API Commands
+
+Phase 14.1C adds an experimental server command namespace:
+
+```text
+/imm_ptl_api
+```
+
+These commands are protected by permission level 2. They are intended for QA
+and for modders experimenting with the API. They are not the recommended
+integration surface for mods; mods should call `qouteall.imm_ptl.api` directly.
+
+Available commands:
+
+```text
+/imm_ptl_api create_forward [distance] [width] [height]
+/imm_ptl_api create_linked_forward [distance] [width] [height]
+/imm_ptl_api create_floor_linked [distance] [size]
+/imm_ptl_api inspect_nearest [radius]
+/imm_ptl_api list_nearby [radius]
+/imm_ptl_api remove_nearest [radius]
+```
+
+The creation commands use `PortalApi.builder(...)`. The removal command uses
+`PortalApi.removePortal(...)`. Inspection commands may read nearby portal
+entities for display, but they do not mutate portal internals directly.
+
+`create_floor_linked` exists to test WHA/pentacle-style horizontal portals. It
+uses `PortalShapeSpec.HorizontalRectangle`, but the current 26.1 alpha renderer
+still treats horizontal portal visuals as experimental.
+
 ## Limits
 
 This phase does not provide:

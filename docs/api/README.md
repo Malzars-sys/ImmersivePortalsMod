@@ -27,6 +27,8 @@ The main design stress case is WHA / Witch Hate Atelier:
   - implementation report for Phase 14.1.
 - [`PHASE14.1B_API_RUNTIME_SMOKE_TEST.md`](PHASE14.1B_API_RUNTIME_SMOKE_TEST.md)
   - runtime smoke-test report for the minimal API.
+- [`PHASE14.1C_PUBLIC_API_COMMANDS.md`](PHASE14.1C_PUBLIC_API_COMMANDS.md)
+  - implementation report for the `/imm_ptl_api` command harness.
 
 ## Planned First Implementation
 
@@ -42,6 +44,10 @@ planned for later phases.
 Phase 14.1B added a development-only runtime smoke harness and validated that
 API-created linked portals write/read `imm_ptl_public_api` metadata and survive
 save/reload.
+
+Phase 14.1C added an experimental `/imm_ptl_api` command namespace for QA and
+modder experimentation. The commands call the public API and are not a
+replacement for direct mod integration through `qouteall.imm_ptl.api`.
 
 Advanced rendering, Sodium, Iris, DimLib, shaderpacks, shader clipping, and
 renderer internals are not part of the initial stable public API surface.
