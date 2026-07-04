@@ -4165,3 +4165,70 @@ Conclusion :
   Fabric API et dependances optionnelles prevues.
 
 Rapport : `PHASE12.0_ALPHA_PACKAGE_AUDIT.md`.
+
+### 12.1 Smoke test externe propre du jar alpha vanilla
+
+Objectif :
+
+- tester le jar alpha vanilla hors du dossier de developpement ;
+- utiliser une instance separee de `run/` ;
+- verifier chargement Fabric/Minecraft/mod et entree dans un monde propre ;
+- ne pas modifier le runtime ou rouvrir le rendu/compatibilites lourdes.
+
+Instance externe :
+
+- dossier :
+  - `C:\Users\simeo\Downloads\ImmersivePortalsAlphaSmoke` ;
+- Minecraft : `26.1` ;
+- Fabric Loader : `0.19.3` ;
+- Fabric API : `0.145.1+26.1` ;
+- jar teste :
+  - `immersive-portals-7.0.0-alpha.1-mc26.1-fabric.jar` ;
+- monde propre :
+  - `Phase121ExternalAlphaSmoke`.
+
+Validation :
+
+- Minecraft lance : oui ;
+- Fabric Loader charge : oui ;
+- Immersive Portals charge : oui, `7.0.0-alpha.1` ;
+- Fabric API charge : oui ;
+- Sodium charge : non ;
+- Iris charge : non ;
+- DimLib charge : non ;
+- shaderpack charge : non ;
+- menu/runtime initialise : oui ;
+- monde solo propre atteint : oui ;
+- joueur rejoint le monde : oui.
+
+Signaux negatifs :
+
+- `Network Protocol Error` : 0 ;
+- `Error deserializing chunk packet` : 0 ;
+- `Duplicate entity UUID` : 0 ;
+- `ConcurrentModificationException` : 0 ;
+- `Buffer already closed` : 0 ;
+- `Missing program` : 0 ;
+- `UnsupportedOperationException` : 0 ;
+- erreur mixin bloquante : 0 ;
+- erreur access widener : 0 ;
+- erreur `fabric.mod.json` : 0.
+
+Notes :
+
+- le lancement direct offline produit des warnings attendus d'authentification
+  Mojang/Realms, sans bloquer le chargement ;
+- le test portail minimal n'a pas ete execute dans l'instance externe car
+  `/imm_ptl_debug` et les hooks automatiques de portail sont volontairement
+  limites a l'environnement de developpement ;
+- la preuve gameplay portail reste la matrice vanilla Phase 11.11.
+
+Conclusion :
+
+- jar alpha vanilla charge dans une instance externe propre : OK ;
+- monde propre externe atteint : OK ;
+- alpha vanilla localement publiable comme candidat minimal ;
+- prochaine etape recommandee : checklist release/publication et decision sur
+  documentation ou commande utilisateur minimale hors dev pour QA alpha.
+
+Rapport : `PHASE12.1_EXTERNAL_ALPHA_SMOKE_TEST.md`.
