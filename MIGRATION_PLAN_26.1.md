@@ -1,5 +1,13 @@
 # Plan de migration Minecraft 26.1
 
+Note de rangement :
+
+- les rapports detailles `PHASE*.md` sont archives dans
+  `docs/migration/phases/` ;
+- les notes de publication sont dans `docs/migration/release/` ;
+- les logs, diffs, captures et commandes temporaires de phases doivent aller
+  dans `docs/migration/artifacts/` au lieu de la racine du depot.
+
 ## Objectif
 
 Obtenir d'abord une compilation Fabric vanilla sans Sodium ni Iris, puis descendre
