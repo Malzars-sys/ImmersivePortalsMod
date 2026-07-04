@@ -3803,3 +3803,133 @@ Recommandation Phase 11.8 :
   - garder le chantier hors rendu.
 
 Rapport : `PHASE11.7_DIMENSION_PORTAL_SAVE_RELOAD_REGRESSION.md`.
+
+### 11.8 Bug ImmPtlClientChunkMap apres Nether -> Overworld reload
+
+Objectif :
+
+- diagnostiquer et corriger l'erreur reseau chunk observee apres la traversee
+  Nether -> Overworld ;
+- ne pas rouvrir le rendu ;
+- ne pas modifier Sodium, Iris, DimLib, AlternateDimensions ou les fallbacks
+  shaderpack ;
+- ne pas reactiver globalement `chunk_sync`.
+
+Symptome reproduit :
+
+- monde dedie : `Phase118NetherToOverworldChunkPacket` ;
+- direction : `minecraft:the_nether -> minecraft:overworld` ;
+- portail cree : oui ;
+- portail selectionne cote client : oui ;
+- `Client Changed Dimension from minecraft:the_nether to minecraft:overworld` :
+  oui ;
+- `Client Teleported Statically` : oui ;
+- puis, avant correctif :
+  - `ImmPtlClientChunkMap Error deserializing chunk packet minecraft:overworld` ;
+  - `IndexOutOfBoundsException: readerIndex(...) + length(2) exceeds writerIndex(...)` ;
+  - `Network Protocol Error`.
+
+Cause :
+
+- apres teleportation statique, le client bascule immediatement sur le monde
+  Overworld ;
+- quelques paquets chunk vanilla non rediriges de l'ancienne dimension peuvent
+  encore arriver ;
+- un paquet chunk Nether contient moins de sections verticales qu'un chunk
+  Overworld ;
+- applique au `ClientLevel` Overworld, ce buffer atteint EOF dans
+  `LevelChunkSection.read(...)`.
+
+Correctif minimal :
+
+- fichier modifie :
+  - `ImmPtlClientChunkMap.java` ;
+- `loadChunkDataFromPacket(...)` retourne un booleen ;
+- en cas de `IndexOutOfBoundsException` sur paquet vanilla non redirige :
+  - paquet considere stale apres world switch ;
+  - paquet ignore proprement ;
+  - aucun chunk incomplet insere ;
+  - aucun signal de chunk load emis ;
+  - pas de deconnexion reseau ;
+- les paquets rediriges Immersive Portals restent stricts via :
+  - `!PacketRedirectionClient.getIsProcessingRedirectedMessage()`.
+
+Validation :
+
+- `compileJava processResources` : BUILD SUCCESSFUL ;
+- run final `Phase118NetherToOverworldChunkPacket` :
+  - creation + traversee : `Client Teleported Statically` ;
+  - reload sans recreation : `Client Teleported Statically` ;
+  - `Error deserializing chunk packet` : 0 ;
+  - `Network Protocol Error` : 0 ;
+  - `No nearby portal` : 0 ;
+  - `Duplicate entity UUID` : 0 ;
+  - `ConcurrentModificationException` : 0 ;
+  - `Buffer already closed` : 0 ;
+  - `Missing program` : 0 ;
+  - `UnsupportedOperationException` : 0 ;
+  - crash : 0.
+
+Logs :
+
+- `compile-phase11.8-26.1.txt` ;
+- `runclient-phase11.8-nether-to-overworld-reload.txt` ;
+- `runclient-phase11.8-nether-to-overworld-reload-stderr.txt`.
+
+Recommandation Phase 11.9 :
+
+- regression courte des quatre directions Phase 11.7 avec le correctif actif ;
+- verifier plusieurs reloads Nether -> Overworld ;
+- garder le chantier hors rendu.
+
+Rapport : `PHASE11.8_CLIENT_CHUNK_PACKET_RELOAD_BUG.md`.
+
+### 11.9 Regression courte apres correctif ImmPtlClientChunkMap
+
+Objectif :
+
+- rejouer les directions Phase 11.7 avec le correctif 11.8 actif ;
+- confirmer que le fix `ImmPtlClientChunkMap` ne degrade pas les reloads
+  interdimensionnels ;
+- ne pas rouvrir le rendu, Sodium, Iris, DimLib, AlternateDimensions ou les
+  fallbacks shaderpack.
+
+Validation effectuee :
+
+- `Overworld -> Nether` :
+  - creation + traversee : OK ;
+  - reload sans recreation : OK ;
+  - `Network Protocol Error` : 0 ;
+  - `Error deserializing chunk packet` : 0.
+- `Nether -> Overworld` :
+  - creation + traversee : OK ;
+  - reload sans recreation : OK ;
+  - reload supplementaire : OK ;
+  - `Network Protocol Error` : 0 ;
+  - `Error deserializing chunk packet` : 0 ;
+  - warning stale vanilla chunk packet : borne/absent dans le run observe.
+- `Overworld -> End` :
+  - creation + traversee : OK ;
+  - reload sans recreation : OK ;
+  - `Network Protocol Error` : 0 ;
+  - `Error deserializing chunk packet` : 0.
+- `End -> Overworld` :
+  - non revalide proprement dans le harnais Phase119 ;
+  - echec observe : `No nearby portal` pendant les tentatives de reload ;
+  - pas de crash ;
+  - pas de `Network Protocol Error` ;
+  - pas de `Error deserializing chunk packet` ;
+  - a traiter comme probleme cible de harnais/synchronisation reload End, pas
+    comme regression du correctif chunk 11.8.
+
+Conclusion :
+
+- le correctif 11.8 reste stable sur les trois directions validees ;
+- le cas sensible `Nether -> Overworld` est confirme stable apres reload et
+  reload supplementaire ;
+- aucune regression reseau/chunk n'a ete observee ;
+- prochaine phase recommandee : Phase 11.10 ciblee sur `End -> Overworld`
+  reload, pour fiabiliser le harnais ou diagnostiquer la synchronisation du
+  portail recharge cote client.
+
+Rapport : `PHASE11.9_DIMENSION_RELOAD_REGRESSION_AFTER_CHUNK_FIX.md`.
