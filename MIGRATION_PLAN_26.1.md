@@ -4232,3 +4232,65 @@ Conclusion :
   documentation ou commande utilisateur minimale hors dev pour QA alpha.
 
 Rapport : `PHASE12.1_EXTERNAL_ALPHA_SMOKE_TEST.md`.
+
+### 12.2 Checklist release / publication alpha vanilla minimale
+
+Objectif :
+
+- preparer une checklist publication honnete pour l'alpha vanilla minimale ;
+- documenter les dependances, validations et limites connues ;
+- ne pas modifier le runtime ;
+- ne pas rouvrir le rendu, Sodium, Iris, DimLib, AlternateDimensions,
+  chunk sync global ou chunk tracking avance.
+
+Jar final prevu :
+
+- `build/libs/immersive-portals-7.0.0-alpha.1-mc26.1-fabric.jar`.
+
+Dependances a annoncer :
+
+- Minecraft `26.1` ;
+- Fabric Loader `0.19.3` ;
+- Fabric API `0.145.1+26.1` ;
+- Cloth Config `26.1.154` inclus ;
+- Sodium non requis ;
+- Iris non requis ;
+- DimLib non requis.
+
+Etat alpha :
+
+- compilation : OK ;
+- build jar : OK ;
+- validation access widener : OK ;
+- instance externe propre : OK ;
+- monde solo propre externe : OK ;
+- matrice vanilla 4 directions : OK en harnais dev controle Phase 11.11 ;
+- sauvegarde/reload : OK en harnais dev controle Phase 11.11.
+
+Limites connues :
+
+- alpha vanilla minimale, pas portage complet ;
+- rendu recursif avance encore partiel ;
+- clipping shader/stencil general non restaure ;
+- shaderpacks non finalises ;
+- Complementary non garanti, fallbacks manuels/experimentaux ;
+- Sodium/Iris hors cible de cette alpha ;
+- DimLib / AlternateDimensions isoles ;
+- chunk tracking avance global isole ;
+- commandes debug non disponibles comme UX publique dans le jar production.
+
+Livrables :
+
+- `PHASE12.2_ALPHA_RELEASE_CHECKLIST.md` ;
+- `RELEASE_NOTES_7.0.0-alpha.1-mc26.1.md` ;
+- `git-diff-phase12.2.txt`.
+
+Conclusion :
+
+- alpha vanilla minimale prete a publication locale comme candidat ;
+- tag recommande apres commit propre :
+  `v7.0.0-alpha.1-mc26.1-vanilla` ;
+- prochaine phase recommandee : commit des docs release et creation eventuelle
+  du tag local annote.
+
+Rapport : `PHASE12.2_ALPHA_RELEASE_CHECKLIST.md`.
