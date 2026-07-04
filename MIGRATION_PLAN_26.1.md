@@ -4092,3 +4092,76 @@ Conclusion :
   rouvrir le rendu ni les compatibilites lourdes.
 
 Rapport : `PHASE11.11_FINAL_VANILLA_DIMENSION_RELOAD_MATRIX.md`.
+
+### 12.0 Audit preparation alpha vanilla minimale / packaging
+
+Objectif :
+
+- verifier que le profil vanilla minimal peut produire un jar alpha propre ;
+- ne pas rouvrir le rendu avance ;
+- ne pas reactiver Sodium, Iris, DimLib, AlternateDimensions, chunk sync global
+  ou chunk tracking avance ;
+- verifier les metadata generees, les mixins effectifs et le contenu du jar.
+
+Correctifs packaging appliques :
+
+- `build.gradle` :
+  - ajout de `test { failOnNoDiscoveredTests = false }` ;
+  - raison : Gradle 9 faisait echouer `build` car des sources de test existent
+    mais aucun test executable n'est decouvert ;
+  - les tests restent compilables, mais le packaging n'est plus bloque par ce
+    cas.
+- `src/main/resources/imm_ptl.accesswidener` :
+  - suppression de quatre entrees obsoletes qui faisaient echouer
+    `validateAccessWidener` :
+    - `GameRules.register(...)` ;
+    - `GameRules.BooleanValue.create(boolean)` ;
+    - `Program.Type.getGlType()` ;
+    - `RegistryDataLoader.Loader` ;
+  - aucune modification runtime/rendu/compatibilite lourde.
+
+Validation :
+
+- `clean compileJava processResources` : BUILD SUCCESSFUL ;
+- `build` : BUILD SUCCESSFUL ;
+- `validateAccessWidener` : OK ;
+- jar produit :
+  - `build/libs/immersive-portals-7.0.0-alpha.1-mc26.1-fabric.jar`.
+
+Audit du jar :
+
+- `fabric.mod.json` : present ;
+- `imm_ptl.mixins.json` : present ;
+- `imm_ptl.accesswidener` : present ;
+- `imm_ptl_compat.mixins.json` : absent du profil vanilla genere ;
+- dependance `dimlib` : absente du `fabric.mod.json` genere ;
+- `run/`, `build/`, saves, screenshots, logs, shaderpacks : absents ;
+- Sodium/Iris/DimLib embarques : non ;
+- Cloth Config embarque comme jar inclus attendu.
+
+Profil vanilla genere :
+
+- Sodium absent par defaut ;
+- Iris absent par defaut ;
+- DimLib isole ;
+- AlternateDimensions isole ;
+- mixins shader/fog/clipping complets exclus ;
+- mixins compat runtime Sodium/Iris exclus.
+
+Smoke test :
+
+- un smoke run dev vanilla a charge le profil sans Sodium/Iris/DimLib ;
+- le test portail automatique n'a pas ete retenu comme preuve finale, car le
+  profil `run` etait contamine par un etat/datapack de repositionnement de
+  Phase 11 ;
+- aucune modification runtime n'a ete faite pour ce point ;
+- la preuve gameplay principale reste la matrice 4 directions Phase 11.11.
+
+Conclusion :
+
+- candidat jar alpha vanilla minimal : pret cote build/package ;
+- recommandation avant upload public : Phase 12.1 smoke test externe propre,
+  avec le jar produit dans une instance Fabric separee contenant seulement
+  Fabric API et dependances optionnelles prevues.
+
+Rapport : `PHASE12.0_ALPHA_PACKAGE_AUDIT.md`.

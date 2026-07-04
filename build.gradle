@@ -312,6 +312,7 @@ processResources {
                 if (line.contains('"common.chunk_sync.MixinChunkMap_C",')) return line
                 if (line.contains('"common.chunk_sync.IEServerCommonPacketListenerImpl",')) return line
                 if (line.contains('"common.chunk_sync.')) return null
+                if (line.contains('"common.entity_sync.MixinServerPlayer",')) return line
                 if (line.contains('"common.entity_sync.')) return null
                 if (line.contains('"common.position_sync.')) return null
                 if (line.contains('"common.other_sync.MixinPlayerList",')) return null
@@ -429,6 +430,9 @@ task printClasspath {
 
 // run test when building will slow down the build process
 // manually run when needed
+test {
+    failOnNoDiscoveredTests = false
+}
 //test {
 //    useJUnitPlatform()
 //    testLogging {
