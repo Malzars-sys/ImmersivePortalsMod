@@ -4353,3 +4353,63 @@ Resume :
 Prochaine phase recommandee :
 
 - Phase 14.1 - Minimal Server-Side Portal API.
+
+### Phase 14.1 - Minimal Server-Side Portal API
+
+Statut : implementation initiale terminee le 4 juillet 2026.
+
+Classes creees :
+
+- `qouteall.imm_ptl.api.PortalApi` ;
+- `qouteall.imm_ptl.api.PortalBuilder` ;
+- `qouteall.imm_ptl.api.PortalHandle` ;
+- `qouteall.imm_ptl.api.PortalShapeSpec` ;
+- `qouteall.imm_ptl.api.PortalVisualOptions` ;
+- `qouteall.imm_ptl.api.PortalTeleportOptions` ;
+- `qouteall.imm_ptl.api.PortalCreationResult` ;
+- `qouteall.imm_ptl.api.PortalRemovalReason` ;
+- `qouteall.imm_ptl.api.PortalPersistentData`.
+
+Fonctionnalites :
+
+- creation serveur d'un portail simple via builder ;
+- creation d'une paire liee avec portail retour ;
+- handle stable sans exposer directement `Portal` ;
+- recherche par niveau/UUID ou par handle ;
+- suppression par handle ;
+- metadata publique minimale persistante :
+  - version API ;
+  - owner ;
+  - sourceAnchorId optionnel ;
+  - targetAnchorId optionnel ;
+  - options visuelles haut niveau.
+
+Chemin interne utilise :
+
+- `Portal.ENTITY_TYPE.create(...)` ;
+- setters existants de `Portal` ;
+- `PortalManipulation.createReversePortal(...)` ;
+- `McHelper.spawnServerEntity(...)` ;
+- signaux NBT existants de `Portal`.
+
+Limites :
+
+- pas encore d'evenements publics ;
+- pas encore de couche anchor/pentacle WHA ;
+- pas de cercle ou forme custom ;
+- `PortalVisualOptions` reste haut niveau et ne branche pas de renderer magique ;
+- aucun changement Sodium/Iris/DimLib/rendu/chunk tracking.
+
+Validation :
+
+- `compileJava processResources` : BUILD SUCCESSFUL ;
+- `build` : BUILD SUCCESSFUL.
+
+Documentation :
+
+- `docs/api/API_USAGE_14.1.md` ;
+- `docs/api/PHASE14.1_MINIMAL_SERVER_PORTAL_API.md`.
+
+Prochaine phase recommandee :
+
+- Phase 14.2 - Anchor / pentacle API et evenements publics.

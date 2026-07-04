@@ -9,6 +9,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntityType;
 import org.slf4j.Logger;
+import qouteall.imm_ptl.api.PortalApi;
 import qouteall.imm_ptl.core.block_manipulation.BlockManipulationServer;
 import qouteall.imm_ptl.core.chunk_loading.EntitySync;
 import qouteall.imm_ptl.core.chunk_loading.ImmPtlChunkTickets;
@@ -93,6 +94,7 @@ public class IPModMain {
         CollisionHelper.init();
         
         PortalExtension.init();
+        PortalApi.init();
         
         GcMonitor.initCommon();
         
