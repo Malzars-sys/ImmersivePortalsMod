@@ -28,7 +28,9 @@ import qouteall.imm_ptl.core.McHelper;
 import qouteall.imm_ptl.core.compat.sodium_compatibility.SodiumInterface;
 import qouteall.imm_ptl.core.ducks.IEMinecraftClient;
 import qouteall.imm_ptl.core.miscellaneous.IPVanillaCopy;
+import qouteall.imm_ptl.core.network.PacketRedirectionClient;
 import qouteall.imm_ptl.core.platform_specific.O_O;
+import qouteall.q_misc_util.my_util.CountDownInt;
 import qouteall.q_misc_util.my_util.SignalArged;
 
 import java.util.Arrays;
@@ -59,6 +61,7 @@ public class ImmPtlClientChunkMap extends ClientChunkCache {
     
     public static final SignalArged<LevelChunk> clientChunkLoadSignal = new SignalArged<>();
     public static final SignalArged<LevelChunk> clientChunkUnloadSignal = new SignalArged<>();
+    private static final CountDownInt staleVanillaChunkPacketLogLimit = new CountDownInt(20);
     
     public ImmPtlClientChunkMap(ClientLevel clientWorld, int loadDistance) {
         super(clientWorld, 1);
@@ -151,7 +154,9 @@ public class ImmPtlClientChunkMap extends ClientChunkCache {
         LevelChunk worldChunk = chunkMapForMainThread.get(chunkPosLong);
         if (worldChunk == null) {
             worldChunk = new LevelChunk(this.level, new ChunkPos(x, z));
-            loadChunkDataFromPacket(buf, heightmaps, worldChunk, consumer);
+            if (!loadChunkDataFromPacket(buf, heightmaps, worldChunk, consumer)) {
+                return null;
+            }
             
             LevelChunk worldChunkToPut = worldChunk; // lambda can only capture effectively final variables
             modifyChunkMap(chunkMap -> {
@@ -159,7 +164,9 @@ public class ImmPtlClientChunkMap extends ClientChunkCache {
             });
         }
         else {
-            loadChunkDataFromPacket(buf, heightmaps, worldChunk, consumer);
+            if (!loadChunkDataFromPacket(buf, heightmaps, worldChunk, consumer)) {
+                return worldChunk;
+            }
         }
         
         this.level.onChunkLoaded(new ChunkPos(x, z));
@@ -176,7 +183,7 @@ public class ImmPtlClientChunkMap extends ClientChunkCache {
      * {@link net.minecraft.core.IdMap#byIdOrThrow(int)}
      * {@link net.minecraft.world.level.chunk.LinearPalette#read(FriendlyByteBuf)}
      */
-    private void loadChunkDataFromPacket(
+    private boolean loadChunkDataFromPacket(
         FriendlyByteBuf buf,
         java.util.Map<Heightmap.Types, long[]> heightmaps,
         LevelChunk worldChunk,
@@ -184,8 +191,25 @@ public class ImmPtlClientChunkMap extends ClientChunkCache {
     ) {
         try {
             worldChunk.replaceWithPacketData(buf, heightmaps, consumer);
+            return true;
         }
         catch (Exception e) {
+            if (e instanceof IndexOutOfBoundsException && !PacketRedirectionClient.getIsProcessingRedirectedMessage()) {
+                if (staleVanillaChunkPacketLogLimit.tryDecrement()) {
+                    LOGGER.warn(
+                        "Ignoring incompatible vanilla chunk packet after world switch. target={} pos={} readerIndex={} writerIndex={} readableBytes={} clientLevel={} error={}",
+                        worldChunk.getLevel().dimension().identifier(),
+                        worldChunk.getPos(),
+                        buf.readerIndex(),
+                        buf.writerIndex(),
+                        buf.readableBytes(),
+                        Minecraft.getInstance().level != null ? Minecraft.getInstance().level.dimension().identifier() : null,
+                        e.toString()
+                    );
+                }
+                return false;
+            }
+
             LOGGER.error(
                 "Error deserializing chunk packet {} {}",
                 worldChunk.getLevel().dimension().identifier(),

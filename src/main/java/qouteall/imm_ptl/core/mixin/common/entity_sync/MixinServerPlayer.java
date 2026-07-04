@@ -8,12 +8,16 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
+import com.mojang.logging.LogUtils;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.slf4j.Logger;
 import qouteall.imm_ptl.core.ducks.IEServerPlayerEntity;
 
 @Mixin(ServerPlayer.class)
 public abstract class MixinServerPlayer extends Player implements IEServerPlayerEntity {
+    private static final Logger LOGGER = LogUtils.getLogger();
+
     @Shadow
     public ServerGamePacketListenerImpl connection;
     @Shadow
@@ -45,7 +49,13 @@ public abstract class MixinServerPlayer extends Player implements IEServerPlayer
     public void portal_worldChanged(ServerLevel fromWorld, Vec3 fromPos) {
         if (fromWorld.dimension() == Level.OVERWORLD && this.level().dimension() == Level.NETHER) {
             enteredNetherPosition = fromPos;
+            LOGGER.info("portal_worldChanged stored enteredNetherPosition {}", fromPos);
         }
+        LOGGER.info(
+            "portal_worldChanged triggerDimensionChangeTriggers {} -> {}",
+            fromWorld.dimension().identifier(),
+            this.level().dimension().identifier()
+        );
         triggerDimensionChangeTriggers(fromWorld);
     }
 }
