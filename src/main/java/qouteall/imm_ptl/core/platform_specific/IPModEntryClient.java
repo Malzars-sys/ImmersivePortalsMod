@@ -33,6 +33,8 @@ public class IPModEntryClient implements ClientModInitializer {
         "true".equalsIgnoreCase(System.getenv("IMM_PTL_AUTO_VISIBLE_TEST_PORTAL"));
     private static final boolean AUTO_MINIMAL_TRAVERSAL_TEST =
         "true".equalsIgnoreCase(System.getenv("IMM_PTL_AUTO_MINIMAL_TRAVERSAL_TEST"));
+    private static final boolean AUTO_API_SMOKE_TEST =
+        "true".equalsIgnoreCase(System.getenv("IMM_PTL_AUTO_API_SMOKE_TEST"));
     private static final String AUTO_DIMENSION_TEST_PORTAL =
         System.getenv("IMM_PTL_AUTO_DIMENSION_TEST_PORTAL");
     private static final String AUTO_DIMENSION_TEST_SOURCE =
@@ -45,6 +47,8 @@ public class IPModEntryClient implements ClientModInitializer {
     private static int sodiumPortalPresenceTicks;
     private static boolean autoMinimalTraversalCommandSent;
     private static int autoMinimalTraversalTicks;
+    private static boolean autoApiSmokeTestCommandSent;
+    private static int autoApiSmokeTestTicks;
     
     
     
@@ -80,7 +84,10 @@ public class IPModEntryClient implements ClientModInitializer {
 
         if (
             FabricLoader.getInstance().isDevelopmentEnvironment() &&
-            (AUTO_VISIBLE_TEST_PORTAL || AUTO_DIMENSION_TEST_PORTAL != null || AUTO_MINIMAL_TRAVERSAL_TEST)
+            (
+                AUTO_VISIBLE_TEST_PORTAL || AUTO_DIMENSION_TEST_PORTAL != null ||
+                    AUTO_MINIMAL_TRAVERSAL_TEST || AUTO_API_SMOKE_TEST
+            )
         ) {
             ClientTickEvents.END_CLIENT_TICK.register(IPModEntryClient::tickDevPortalTests);
         }
@@ -90,7 +97,17 @@ public class IPModEntryClient implements ClientModInitializer {
         if (client.level == null || client.player == null || client.getConnection() == null) {
             autoVisibleTestPortalTicks = 0;
             autoMinimalTraversalTicks = 0;
+            autoApiSmokeTestTicks = 0;
             return;
+        }
+
+        if (AUTO_API_SMOKE_TEST && !autoApiSmokeTestCommandSent) {
+            autoApiSmokeTestTicks++;
+            if (autoApiSmokeTestTicks >= 80) {
+                autoApiSmokeTestCommandSent = true;
+                Helper.log("Running dev PortalApi smoke test command");
+                client.getConnection().sendCommand("imm_ptl_debug api_create_linked_test_portal");
+            }
         }
 
         if ((AUTO_VISIBLE_TEST_PORTAL || AUTO_DIMENSION_TEST_PORTAL != null) && !autoVisibleTestPortalCommandSent) {

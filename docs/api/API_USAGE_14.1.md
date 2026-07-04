@@ -101,6 +101,28 @@ Portals created through the API store minimal public metadata:
 This metadata is stored under the portal NBT key `imm_ptl_public_api`.
 It does not replace the internal portal NBT format.
 
+## Runtime Smoke Harness
+
+In a development environment, Phase 14.1B adds a smoke-test command:
+
+```text
+/imm_ptl_debug api_create_linked_test_portal
+```
+
+It creates a linked Overworld -> Overworld portal pair through
+`PortalApi.builder(...)`, assigns owner `imm_ptl:api_smoke_test`, writes
+`imm_ptl_public_api` metadata and requests a save.
+
+For automated dev runs, this flag sends the command after the client joins a
+world:
+
+```text
+IMM_PTL_AUTO_API_SMOKE_TEST=true
+```
+
+The harness is for QA only. Third-party mods should call `PortalApi` directly
+instead of invoking debug commands.
+
 ## Limits
 
 This phase does not provide:

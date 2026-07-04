@@ -21,6 +21,7 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ChunkHolder;
@@ -45,6 +46,12 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
+import qouteall.imm_ptl.api.PortalApi;
+import qouteall.imm_ptl.api.PortalCreationResult;
+import qouteall.imm_ptl.api.PortalHandle;
+import qouteall.imm_ptl.api.PortalShapeSpec;
+import qouteall.imm_ptl.api.PortalTeleportOptions;
+import qouteall.imm_ptl.api.PortalVisualOptions;
 import qouteall.imm_ptl.core.CHelper;
 import qouteall.imm_ptl.core.McHelper;
 import qouteall.imm_ptl.core.api.example.ExampleGuiPortalRendering;
@@ -131,7 +138,61 @@ public class PortalDebugCommands {
                     )
                 )
             )
+            .then(Commands.literal("api_create_linked_test_portal")
+                .executes(context -> createApiLinkedTestPortal(
+                    context.getSource().getPlayerOrException()
+                ))
+            )
         );
+    }
+
+    private static int createApiLinkedTestPortal(ServerPlayer player) {
+        ServerLevel world = player.level();
+        Direction facing = player.getDirection();
+        Vec3 normal = Vec3.atLowerCornerOf(facing.getUnitVec3i());
+        Vec3 origin = player.position().add(normal.scale(4)).add(0, 1.5, 0);
+        Vec3 destination = origin.add(normal.scale(10));
+        Identifier owner = McHelper.newIdentifier("imm_ptl", "api_smoke_test");
+
+        PortalCreationResult result = PortalApi.builder(world.getServer())
+            .owner(owner)
+            .source(world, origin)
+            .target(world, destination)
+            .shape(new PortalShapeSpec.Rectangle(2, 3))
+            .visual(new PortalVisualOptions(
+                true,
+                0xFF55FFFF,
+                PortalVisualOptions.Style.DEBUG_CYAN
+            ))
+            .teleport(PortalTeleportOptions.defaults())
+            .sourceAnchorId("phase14_1b_source")
+            .targetAnchorId("phase14_1b_target")
+            .createLinkedPair();
+
+        if (result instanceof PortalCreationResult.Failure failure) {
+            LOGGER.error("PortalApi smoke test failed: {}", failure.reason().getString());
+            player.sendSystemMessage(Component.literal(
+                "PortalApi smoke test failed: " + failure.reason().getString()
+            ));
+            return 0;
+        }
+
+        PortalCreationResult.Success success = (PortalCreationResult.Success) result;
+        PortalHandle primary = success.primary();
+        PortalHandle reverse = success.reverse().orElse(null);
+        LOGGER.info(
+            "PortalApi smoke test PortalCreationResult.Success primary={} reverse={} owner={} source={} target={}",
+            primary, reverse, owner, origin, destination
+        );
+        player.sendSystemMessage(Component.literal(
+            "PortalApi smoke test created primary=%s reverse=%s".formatted(
+                primary.entityId(), reverse != null ? reverse.entityId() : null
+            )
+        ));
+
+        world.getServer().saveAllChunks(true, true, false);
+        LOGGER.info("PortalApi smoke test requested saveAllChunks after creation");
+        return 1;
     }
 
     private static int createMinimalTestPortal(ServerPlayer player, boolean placePlayerFacingPortal) {

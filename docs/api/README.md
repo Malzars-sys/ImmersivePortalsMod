@@ -25,6 +25,8 @@ The main design stress case is WHA / Witch Hate Atelier:
   minimal server-side portal API.
 - [`PHASE14.1_MINIMAL_SERVER_PORTAL_API.md`](PHASE14.1_MINIMAL_SERVER_PORTAL_API.md)
   - implementation report for Phase 14.1.
+- [`PHASE14.1B_API_RUNTIME_SMOKE_TEST.md`](PHASE14.1B_API_RUNTIME_SMOKE_TEST.md)
+  - runtime smoke-test report for the minimal API.
 
 ## Planned First Implementation
 
@@ -36,6 +38,10 @@ Status: implemented as an experimental server-side API. It includes portal
 creation, linked portal pairs, stable handles, removal, lookup and minimal
 persistent public metadata. Events and the WHA anchor/pentacle layer are still
 planned for later phases.
+
+Phase 14.1B added a development-only runtime smoke harness and validated that
+API-created linked portals write/read `imm_ptl_public_api` metadata and survive
+save/reload.
 
 Advanced rendering, Sodium, Iris, DimLib, shaderpacks, shader clipping, and
 renderer internals are not part of the initial stable public API surface.

@@ -1,8 +1,10 @@
 package qouteall.imm_ptl.api;
 
+import com.mojang.logging.LogUtils;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
 import qouteall.imm_ptl.core.McHelper;
 import qouteall.imm_ptl.core.portal.Portal;
 
@@ -20,6 +22,7 @@ public record PortalPersistentData(
     @Nullable String targetAnchorId,
     PortalVisualOptions visualOptions
 ) {
+    private static final Logger LOGGER = LogUtils.getLogger();
     public static final int CURRENT_API_VERSION = 1;
     private static final String TAG_KEY = "imm_ptl_public_api";
     private static final Map<Portal, PortalPersistentData> DATA = new WeakHashMap<>();
@@ -30,11 +33,16 @@ public record PortalPersistentData(
             return;
         }
         initialized = true;
+        LOGGER.info("PortalApi init: registering public portal metadata persistence key {}", TAG_KEY);
         
         Portal.READ_PORTAL_DATA_SIGNAL.register((portal, tag) -> {
             PortalPersistentData data = read(tag);
             if (data != null) {
                 DATA.put(portal, data);
+                LOGGER.info(
+                    "Read {} metadata for portal {} owner={} sourceAnchor={} targetAnchor={}",
+                    TAG_KEY, portal.getUUID(), data.owner(), data.sourceAnchorId(), data.targetAnchorId()
+                );
             }
         });
         
@@ -42,12 +50,20 @@ public record PortalPersistentData(
             PortalPersistentData data = DATA.get(portal);
             if (data != null) {
                 tag.put(TAG_KEY, data.toTag());
+                LOGGER.info(
+                    "Wrote {} metadata for portal {} owner={} sourceAnchor={} targetAnchor={}",
+                    TAG_KEY, portal.getUUID(), data.owner(), data.sourceAnchorId(), data.targetAnchorId()
+                );
             }
         });
     }
     
     public static void set(Portal portal, PortalPersistentData data) {
         DATA.put(portal, data);
+        LOGGER.info(
+            "Assigned {} metadata for portal {} owner={} sourceAnchor={} targetAnchor={}",
+            TAG_KEY, portal.getUUID(), data.owner(), data.sourceAnchorId(), data.targetAnchorId()
+        );
     }
     
     public static @Nullable PortalPersistentData get(Portal portal) {

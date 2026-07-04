@@ -4413,3 +4413,53 @@ Documentation :
 Prochaine phase recommandee :
 
 - Phase 14.2 - Anchor / pentacle API et evenements publics.
+
+### Phase 14.1B - Runtime smoke test de l'API publique minimale
+
+Statut : termine le 4 juillet 2026.
+
+Objectif :
+
+- verifier en runtime que l'API publique minimale cree une paire de portails ;
+- verifier que les handles publics et les metadonnees `imm_ptl_public_api`
+  sont produits ;
+- verifier la sauvegarde/rechargement de ces metadonnees ;
+- ne pas toucher au renderer, Sodium, Iris, DimLib, AlternateDimensions ou au
+  chunk tracking global.
+
+Correctif / harnais ajoute :
+
+- commande dev uniquement :
+  `/imm_ptl_debug api_create_linked_test_portal` ;
+- flag dev opt-in :
+  `IMM_PTL_AUTO_API_SMOKE_TEST=true` ;
+- logs de persistance pour les portails portant `imm_ptl_public_api`.
+
+Validation :
+
+- `compileJava processResources` : BUILD SUCCESSFUL ;
+- `build` : BUILD SUCCESSFUL ;
+- creation runtime : `PortalCreationResult.Success` ;
+- owner cree : `imm_ptl:api_smoke_test` ;
+- anchors crees :
+  - `phase14_1b_source` ;
+  - `phase14_1b_target` ;
+- metadata API ecrite : oui ;
+- metadata API relue apres reload : oui ;
+- portail recollecte par `PortalEntityRenderer` apres reload : oui ;
+- chemin minimal framebuffer / `SubmitNodeCollector` atteint : oui ;
+- crash : 0 ;
+- `Network Protocol Error` : 0 ;
+- `Error deserializing chunk packet` : 0 ;
+- `Duplicate entity UUID` : 0 ;
+- `ConcurrentModificationException` : 0 ;
+- `Buffer already closed` : 0 ;
+- `UnsupportedOperationException` : 0.
+
+Rapport :
+
+- `docs/api/PHASE14.1B_API_RUNTIME_SMOKE_TEST.md`.
+
+Prochaine phase recommandee :
+
+- Phase 14.2 - Anchor / pentacle API et evenements publics.
